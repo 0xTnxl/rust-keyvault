@@ -4,3 +4,17 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+zeroize = { version = "1.7", features = ["derive"] }
+subtle = "2.5"
+thiserror = "1.0"
+
+rand_core = "0.6"
+aead = "0.5"
+
+[dev-dependencies]
+hex = "0.4"
+
+[features]
+default = []
+#unstable = []
+#hardware = []
