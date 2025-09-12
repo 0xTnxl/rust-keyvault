@@ -245,6 +245,9 @@ pub trait ConstantTime {
 
 #[cfg(test)]
 mod tests {
+    use rand_chacha::ChaCha12Rng;
+    use rand_core::SeedableRng;
+
     use super::*;
 
     #[test]
@@ -257,5 +260,35 @@ mod tests {
         assert_eq!(params.algorithm, Algorithm::Aes256Gcm);
         assert_eq!(params.key_size, Some(32));
         assert_eq!(params.seed, None);
+    }
+
+    #[test]
+    fn test_end_to_end_aead() {
+        // Create deterministic RNG for testing and generate a key
+        let mut rng = ChaCha12Rng::seed_from_u64(42);
+        let generator = SimpleSymmetricKeyGenerator;
+        let key = generator.generate(&mut rng).unwrap();
+
+        // Create AEAD and nonce generator
+        let aead = RuntimeAead;
+        let mut nonce_gen = RandomNonceGenerator::new(
+            ChaCha12Rng::seed_from_u64(123),
+            RuntimeAead::NONCE_SIZE
+        );
+
+        // Let's test the data
+        let plaintext = b"Secret message for testing";
+        let associated_data = b"public metadata";
+
+        // Encrypt
+        let nonce = nonce_gen.generate_nonce(b"msg_001").unwrap ();
+        let ciphertext = aead.encrypt(&key, &nonce, plaintext, associated_data).unwrap();
+
+        // Verify that the ciphertext is different from the plaintext
+        assert_ne!(ciphertext.as_slice(), plaintext);
+
+        // Decrypt and finally verify
+        let decrypted = aead.decrypt(&key, &nonce, &ciphertext, associated_data).unwrap();
+        assert_eq!(decrypted.as_slice(), plaintext);
     }
 }

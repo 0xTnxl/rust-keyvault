@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::time::SystemTime;
 use aead::generic_array::typenum::Zero;
@@ -18,8 +19,9 @@ pub mod crypto;
 
 pub use error::{Error, Result};
 
+
 /// A unique identifier for a cryptographic key.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct KeyId([u8; 16]);
 
 impl KeyId {
@@ -42,7 +44,7 @@ impl KeyId {
 }
 
 /// Represents the lifecycle state of a key
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum KeyState {
     /// Key has been generated but is not yet active.
     Pending,
@@ -57,7 +59,7 @@ pub enum KeyState {
 }
 
 /// Metadata about a key
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct KeyMetadata {
     /// Unique identifier for the key
     pub id: KeyId,
@@ -74,7 +76,7 @@ pub struct KeyMetadata {
 }
 
 /// Supported cryptographic algorithms
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Algorithm {
     /// ChaCha20-Poly1305 AEAD
     ChaCha20Poly1305,

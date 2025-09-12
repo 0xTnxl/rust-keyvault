@@ -1,14 +1,18 @@
 //! Error types for rust-keyvault
 
+#![allow(unused_imports)]
+
 use core::error;
 use std::fmt;
 use thiserror::Error;
 
+/// Custom `Result` type 
 pub type Result<T> = std::result::Result<T, Error>; 
 
+/// `rust-keyvault` error module
 #[derive(Debug, Error)]
 pub enum Error {
-    // Key not found in storage
+    /// Key not found in storage
     #[error("key not found: {0:?}")]
     KeyNotFound(crate::KeyId),
 

@@ -6,7 +6,7 @@ use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// A cryptographic key is automatically zeroed on drop
-#[derive(Zeroize, ZeroizeOnDrop)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct SecretKey {
     /// The actual key material
     bytes: Vec<u8>,
@@ -71,6 +71,7 @@ impl fmt::Debug for SecretKey {
 }
 
 /// A versioned key with metadata
+#[derive(Clone, Debug)]
 pub struct VersionedKey {
     /// The secret key material
     pub key: SecretKey,
