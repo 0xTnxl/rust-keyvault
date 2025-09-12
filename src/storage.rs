@@ -31,6 +31,27 @@ pub trait KeyStore: Send + Sync {
 
     /// Find keys by state
     fn find_by_state(&self, state: KeyState) -> Result<Vec<KeyId>>;
+
+    /// Rotate a key to a new version
+    fn rotate_key(&mut self, id: &KeyId) -> Result<VersionedKey>;
+
+    /// Get all verions of a key (sorted by version number)
+    fn get_key_versions(&self, id: &KeyId) -> Result<Vec<VersionedKey>>;
+
+    /// Get the latest active version of a key
+    fn get_latest_key(&self, id: &KeyId) -> Result<VersionedKey>;
+}
+
+/// Extended trait for advanced key lifecycle management
+pub trait KeyLifeCycle: KeyStore {
+    /// Mark a particular key as deprecated (key should be able to decrypt but not encrypt)
+    fn deprecate_key(&mut self, id: &KeyId) -> Result<()>;
+
+    /// Revoke a key (key should not be used for any operations)
+    fn revoke_key(&mut self, if: &KeyId) -> Result<()>;
+
+    /// Clean up old versions based on policy
+    fn cleanup_old_versions(&mut self, id: &KeyId, keep_versions: usize) -> Result<Vec<KeyId>>;
 }
 
 /// Trait for persistent storage backends
