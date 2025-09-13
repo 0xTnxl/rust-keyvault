@@ -1,8 +1,6 @@
 //! Storage backend traits and implementations
 
-use crate::{crypto::{
-                RuntimeAead, AEAD, RandomNonceGenerator, NonceGenerator, SecureRandom,
-            }, key::VersionedKey, KeyId, KeyMetadata, KeyState, Result};
+use crate::{crypto::{RuntimeAead, AEAD, RandomNonceGenerator, NonceGenerator, SecureRandom}, key::VersionedKey, Algorithm, KeyId, KeyMetadata, KeyState, Result};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::path::{Path, PathBuf};
@@ -11,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
 use sha2::{Sha256, Digest};
+use std::time::SystemTime;
 
 /// Trait for key storage backends
 pub trait KeyStore: Send + Sync {
@@ -48,7 +47,7 @@ pub trait KeyLifeCycle: KeyStore {
     fn deprecate_key(&mut self, id: &KeyId) -> Result<()>;
 
     /// Revoke a key (key should not be used for any operations)
-    fn revoke_key(&mut self, if: &KeyId) -> Result<()>;
+    fn revoke_key(&mut self, id: &KeyId) -> Result<()>;
 
     /// Clean up old versions based on policy
     fn cleanup_old_versions(&mut self, id: &KeyId, keep_versions: usize) -> Result<Vec<KeyId>>;
@@ -103,6 +102,23 @@ impl MemoryStore {
             keys: Arc::new(RwLock::new(HashMap::new())),
         }
     }
+
+    /// Generate new key material for the given algorithm
+    fn generate_new_key_material(algorithm: Algorithm) -> Result<crate::key::SecretKey> {
+        use crate::crypto::{SimpleSymmetricKeyGenerator, KeyGenerator};
+        use rand_chacha::ChaCha20Rng;
+        use rand_core::SeedableRng;
+        
+        let mut rng = ChaCha20Rng::from_entropy();
+        let generator = SimpleSymmetricKeyGenerator;
+        let params = crate::crypto::KeyGenParams {
+            algorithm,
+            seed: None,
+            key_size: None,
+        };
+        
+        generator.generate_with_params(&mut rng, params)
+    }
 }
 
 impl KeyStore for MemoryStore {
@@ -149,6 +165,68 @@ impl KeyStore for MemoryStore {
             .filter(|(_, versioned_key)| versioned_key.metadata.state == state)
             .map(|(id, _)| id.clone())
             .collect())
+    }
+
+    fn rotate_key(&mut self, id: &KeyId) -> Result<VersionedKey> {
+        let current_key = self.get_latest_key(id)?;
+        let mut depracated_metadata = current_key.metadata.clone();
+        depracated_metadata.state = KeyState::Deprecated;
+        self.update_metadata(id, depracated_metadata)?;
+
+        let new_version = current_key.metadata.version + 1;
+        let new_key_id = KeyId::generate_versioned(id, new_version)?;
+
+        let new_secret_key = Self::generate_new_key_material(current_key.key_algorithm())?;
+        let new_metadata = KeyMetadata {
+            id: new_key_id.clone(),
+            algorithm: current_key.metadata.algorithm,
+            created_at: SystemTime::now(),
+            expires_at: current_key.metadata.expires_at,
+            state: KeyState::Active,
+            version: new_version,
+        };
+
+        let new_versioned_key = VersionedKey {
+            key: new_secret_key,
+            metadata: new_metadata,
+        };
+
+        // Store the new key
+        self.store(new_versioned_key.clone())?;
+
+        Ok(new_versioned_key)
+    }
+
+    fn get_key_versions(&self, id: &KeyId) -> Result<Vec<VersionedKey>> {
+        let keys = self.keys.read().map_err(|_| crate::Error::storage("lock poisoned"))?;
+
+        let mut versions = Vec::new();
+
+        // Look for all te keys with the same base ID but different versions
+        for (store_id, key) in keys.iter() {
+            if KeyId::same_base_id(id, store_id) {
+                versions.push(key.clone());
+            }
+        }
+
+        // Sort the IDs by version number
+        versions.sort_by_key(|k| k.metadata.version);
+
+        if versions.is_empty() {
+            return Err(crate::Error::storage(format!("no versions found for this key: {:?}", id)))
+        }
+        Ok(versions)
+    }
+
+    fn get_latest_key(&self, id: &KeyId) -> Result<VersionedKey> {
+        let versions = self.get_key_versions(id)?;
+        
+        // Find the latest active or rotating key
+        versions
+            .into_iter()
+            .filter(|k| matches!(k.metadata.state, KeyState::Active | KeyState::Rotating))
+            .max_by_key(|k| k.metadata.version)
+            .ok_or_else(|| crate::Error::storage(format!("no active key found for: {:?}", id)))
     }
 }
 
@@ -329,6 +407,23 @@ impl FileStore {
         // Default to ChaCha20Poly1305 for master key
         crate::key::SecretKey::from_bytes(key.to_vec(), crate::Algorithm::ChaCha20Poly1305)
     }
+
+    /// Generate new key material for the given algorithm
+    fn generate_new_key_material(&self, algorithm: Algorithm) -> Result<crate::key::SecretKey> {
+        use crate::crypto::{SimpleSymmetricKeyGenerator, KeyGenerator};
+        use rand_chacha::ChaCha20Rng;
+        use rand_core::SeedableRng;
+        
+        let mut rng = ChaCha20Rng::from_entropy();
+        let generator = SimpleSymmetricKeyGenerator;
+        let params = crate::crypto::KeyGenParams {
+            algorithm,
+            seed: None,
+            key_size: None,
+        };
+        
+        generator.generate_with_params(&mut rng, params)
+    }
 }
 
 impl EncryptedStore for FileStore {
@@ -449,6 +544,68 @@ impl KeyStore for FileStore {
             .map(|(id, _)| id.clone())
             .collect())
     }
+
+    fn rotate_key(&mut self, id: &KeyId) -> Result<VersionedKey> {
+        let current_key = self.get_latest_key(id)?;
+        
+        let mut deprecated_metadata = current_key.metadata.clone();
+        deprecated_metadata.state = KeyState::Deprecated;
+        self.update_metadata(id, deprecated_metadata)?;
+        
+        let new_version = current_key.metadata.version + 1;
+        let new_key_id = KeyId::generate_versioned(id, new_version)?;
+
+        let new_secret_key = self.generate_new_key_material(current_key.key.algorithm())?;
+        let new_metadata = KeyMetadata {
+            id: new_key_id.clone(),
+            algorithm: current_key.metadata.algorithm,
+            created_at: SystemTime::now(),
+            expires_at: current_key.metadata.expires_at,
+            state: KeyState::Active,
+            version: new_version,
+        };
+        
+        let new_versioned_key = VersionedKey {
+            key: new_secret_key,
+            metadata: new_metadata,
+        };
+        
+        // 5. Store the new key
+        self.store(new_versioned_key.clone())?;
+        
+        Ok(new_versioned_key)
+    }
+
+    fn get_key_versions(&self, id: &KeyId) -> Result<Vec<VersionedKey>> {
+        let mut versions = Vec::new();
+        
+        // Look for all keys with the same base ID but different versions
+        for (stored_id, key) in &self.keys {
+            if KeyId::same_base_id(id, stored_id) {
+                versions.push(key.clone());
+            }
+        }
+        
+        // Sort by version number
+        versions.sort_by_key(|k| k.metadata.version);
+        
+        if versions.is_empty() {
+            return Err(crate::Error::storage(format!("no versions found for key: {:?}", id)));
+        }
+        
+        Ok(versions)
+    }
+
+    fn get_latest_key(&self, id: &KeyId) -> Result<VersionedKey> {
+        let versions = self.get_key_versions(id)?;
+        
+        // Find the latest active or rotating key
+        versions
+            .into_iter()
+            .filter(|k| matches!(k.metadata.state, KeyState::Active | KeyState::Rotating))
+            .max_by_key(|k| k.metadata.version)
+            .ok_or_else(|| crate::Error::storage(format!("no active key found for: {:?}", id)))
+    }
 }
 
 impl PersistentStorage for FileStore {
@@ -487,6 +644,51 @@ impl PersistentStorage for FileStore {
 
     fn location(&self) -> &str {
         self.path.to_str().unwrap_or("<invalid_path>")
+    }
+}
+
+impl KeyLifeCycle for FileStore {
+    fn deprecate_key(&mut self, id: &KeyId) -> Result<()> {
+        let key = self.retrieve(id)?;
+        
+        if !matches!(key.metadata.state, KeyState::Active | KeyState::Rotating) {
+            return Err(crate::Error::InvalidKeyState(
+                format!("cannot deprecate key in state: {:?}", key.metadata.state)
+            ));
+        }
+        
+        let mut new_metadata = key.metadata.clone();
+        new_metadata.state = KeyState::Deprecated;
+        
+        self.update_metadata(id, new_metadata)
+    }
+    
+    fn revoke_key(&mut self, id: &KeyId) -> Result<()> {
+        let key = self.retrieve(id)?;
+        
+        let mut new_metadata = key.metadata.clone();
+        new_metadata.state = KeyState::Revoked;
+        
+        self.update_metadata(id, new_metadata)
+    }
+    
+    fn cleanup_old_versions(&mut self, id: &KeyId, keep_versions: usize) -> Result<Vec<KeyId>> {
+        let mut versions = self.get_key_versions(id)?;
+        
+        // Sort by version (newest first)
+        versions.sort_by_key(|k| std::cmp::Reverse(k.metadata.version));
+        
+        let mut removed_keys = Vec::new();
+        
+        // Keep the specified number of versions, remove the rest
+        for key_to_remove in versions.iter().skip(keep_versions) {
+            if matches!(key_to_remove.metadata.state, KeyState::Revoked | KeyState::Deprecated) {
+                self.delete(&key_to_remove.metadata.id)?;
+                removed_keys.push(key_to_remove.metadata.id.clone());
+            }
+        }
+        
+        Ok(removed_keys)
     }
 }
 

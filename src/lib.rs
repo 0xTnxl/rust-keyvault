@@ -11,6 +11,9 @@ use std::fmt;
 use std::time::SystemTime;
 use aead::generic_array::typenum::Zero;
 use zeroize::{Zeroize, ZeroizeOnDrop}; 
+use sha2::{Sha256, Digest};
+use rand_chacha::ChaCha20Rng;
+use rand_core::{SeedableRng, RngCore};
 
 pub mod error;
 pub mod key;
@@ -40,6 +43,37 @@ impl KeyId {
     /// Get the raw bytes of the KeyId.
     pub const fn as_bytes(&self) -> &[u8; 16] {
         &self.0
+    }
+
+    /// Generate a versioned KeyId based on a base ID and version
+    pub fn generate_versioned(base_id: &KeyId, version: u32) -> Result<Self> {
+        let mut hasher = Sha256::new();
+        hasher.update(base_id.as_bytes());
+        hasher.update(&version.to_le_bytes());
+        hasher.update(b"rust-keyvault-version");
+
+        let hash = hasher.finalize();
+        let mut id_bytes = [0u8; 16];
+        id_bytes.copy_from_slice(&hash[..16]);
+
+        Ok(Self(id_bytes))
+    }
+
+    /// Extract the base ID pattern (for finding related version)
+    /// This is a simplified approach
+    pub fn same_base_id(id1: &KeyId, id2: &KeyId) -> bool {
+        // For now we'll store this info in metadata and use a different approach
+        // This is actually a place holder that always returns false for non-identical IDs
+        id1 == id2
+    }
+
+    /// Generate a new random base KeyId for a key family
+    pub fn generate_base() -> Result<Self> {
+        let mut rng = ChaCha20Rng::from_entropy();
+        let mut bytes = [0u8; 16];
+        rng.fill_bytes(&mut bytes);
+
+        Ok(Self(bytes))
     }
 }
 
