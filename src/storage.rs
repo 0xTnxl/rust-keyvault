@@ -1,6 +1,6 @@
 //! Storage backend traits and implementations
 
-use crate::{crypto::{RuntimeAead, AEAD, RandomNonceGenerator, NonceGenerator, SecureRandom}, key::VersionedKey, Algorithm, KeyId, KeyMetadata, KeyState, Result};
+use crate::{crypto::{RuntimeAead, AEAD, RandomNonceGenerator, NonceGenerator}, key::VersionedKey, KeyId, KeyMetadata, KeyState, Result};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::path::{Path, PathBuf};
@@ -8,10 +8,11 @@ use std::fs;
 use serde::{Deserialize, Serialize};
 use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
-use sha2::{Sha256, Digest};
 use std::time::SystemTime;
-use argon2::{Argon2, PasswordHasher, PasswordHash, PasswordVerifier};
+use argon2::Argon2;
 use argon2::{Algorithm as Argon2Algorithm, Version, Params};
+
+const KEYVAULT_SALT: &[u8] = b"rust-keyvault-argon2-salt-v1-fixed-32b";
 
 /// Trait for key storage backends
 pub trait KeyStore: Send + Sync {
@@ -68,6 +69,9 @@ pub trait PersistentStorage: KeyStore {
 }
 
 /// Serializable wrapper for persisted keys (excludes secret material)
+/// 
+/// Contains key metadata and the encrypted key material for disk storage
+/// The actual secret ket bytes are encrypted when `StorageConfig.encrypted` is true
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct PersistedKey {
     /// Key metadata
@@ -89,6 +93,9 @@ pub trait EncryptedStore: KeyStore {
 }
 
 /// In-memory key store
+/// 
+/// Thread-safe storage backend for testing and high performamce scenerios
+/// where persistence is not required, please remember that all keys are lost when dropped
 pub struct MemoryStore {
     keys: Arc<RwLock<HashMap<KeyId, VersionedKey>>>,
 }
@@ -202,8 +209,8 @@ impl KeyStore for MemoryStore {
         let mut versions = Vec::new();
 
         // Look for all te keys with the same base ID but different versions
-        for (store_id, key) in keys.iter() {
-            if KeyId::same_base_id(id, store_id) {
+        for (_store_id, key) in keys.iter() {
+            if &key.metadata.base_id == id {
                 versions.push(key.clone());
             }
         }
@@ -230,6 +237,8 @@ impl KeyStore for MemoryStore {
 }
 
 /// Configuration for file-based storage
+/// 
+/// Controls encryption, compression and caching behaviour for persistent storage.
 #[derive(Debug, Clone)]
 pub struct StorageConfig {
     /// Path to storage location (file, directory, etc.)
@@ -254,6 +263,9 @@ impl Default for StorageConfig {
 }
 
 /// File-based key store with optional encryption
+/// 
+/// Provides persistent storage of cryptographic keys with optional encryption at rest
+/// The key are cached in memory for performamce and automatically loaded from disk
 pub struct FileStore {
     /// Directory path for key storage
     path: PathBuf,
@@ -298,6 +310,8 @@ impl FileStore {
     }
 
     /// Get the file path for a key ID
+    /// 
+    /// Returns the filesystem path where the key's own encrypted data is stored
     fn key_path(&self, id: &KeyId) -> PathBuf {
         let filename = format!("{:?}.json", id);
         self.path.join(filename)
@@ -385,7 +399,7 @@ impl FileStore {
             return Err(crate::Error::storage("encryption not enabled in config"));
         }
         
-        let salt = b"rust-keyvault-argon2-salt-v1-fixed-32b"; 
+        let salt = KEYVAULT_SALT;
         let master_key = Self::derive_master_key(password, salt)?;
         self.set_master_key(master_key)?;
         
@@ -435,7 +449,7 @@ impl EncryptedStore for FileStore {
             return Err(crate::Error::storage("encryption not enabled in config"));
         }
 
-        let salt = b"rust-keyvault-salt-v1";
+        let salt = KEYVAULT_SALT;
         let master_key = Self::derive_master_key(password, salt)?;
         self.set_master_key(master_key)?;
 
@@ -456,7 +470,7 @@ impl EncryptedStore for FileStore {
         let all_keys: Vec<_> = self.keys.values().cloned().collect();
         
         // Derive new master key
-        let salt = b"rust-keyvault-salt-v1";
+        let salt = KEYVAULT_SALT;
         let new_master_key = Self::derive_master_key(new_password, salt)?;
         
         // Set the new master key
@@ -470,6 +484,9 @@ impl EncryptedStore for FileStore {
         Ok(())
     }
 
+    /// Check if the store is unlocked (has a master key available)
+    /// 
+    /// Returns `true` if a master key has been set and the store can decrypt keys
     fn is_unlocked(&self) -> bool {
         self.master_key.is_some()
     }
@@ -583,7 +600,7 @@ impl KeyStore for FileStore {
         let mut versions = Vec::new();
         
         // Look for all keys with the same base ID but different versions
-        for (stored_id, key) in &self.keys {
+        for (_stored_id, key) in &self.keys {
             if &key.metadata.base_id == id {
                 versions.push(key.clone());
             }

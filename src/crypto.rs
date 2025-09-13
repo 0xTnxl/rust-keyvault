@@ -75,9 +75,7 @@ pub trait AEAD {
     /// Tag size in bytes
     const TAG_SIZE: usize;
 
-    /// Encrypt palintext with associated data
-    /// 
-    /// TODO: Implement for ChaCha20-Poly1305 and AES-GCM
+    /// Encrypt plaintext with associated data
     fn encrypt(
         &self,
         key: &SecretKey,

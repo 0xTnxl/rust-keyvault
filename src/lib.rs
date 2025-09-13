@@ -1,19 +1,17 @@
 //! rust-keyvault: A secure key management library for Rust
 //! 
 //! This crate provides foundational abstraction for cryptographic key management,, 
-//! focusing on security, correctness, and composability.
+//! focusing on security, correctness and composability.
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use std::time::SystemTime;
-use aead::generic_array::typenum::Zero;
 use zeroize::{Zeroize, ZeroizeOnDrop}; 
-use sha2::{Sha256, Digest};
 use rand_chacha::ChaCha20Rng;
 use rand_core::{SeedableRng, RngCore};
+use std::fmt;
 
 pub mod error;
 pub mod key;
@@ -74,6 +72,12 @@ impl KeyId {
         rng.fill_bytes(&mut bytes);
 
         Ok(Self(bytes))
+    }
+}
+
+impl fmt::Display for KeyId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", hex::encode(self.0))
     }
 }
 

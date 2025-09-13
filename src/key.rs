@@ -1,6 +1,6 @@
 //! Key type defination and traits
 
-use crate::{Algorithm, Error, KeyId, KeyMetadata, Result};
+use crate::{Algorithm, Error, KeyMetadata, Result};
 use std::fmt;
 use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -107,15 +107,15 @@ impl VersionedKey {
 
     /// Check is this key can be used for decryption/verification
     pub fn can_decrypt(&self) -> bool {
-        matches!(self.metadata.state, crate::KeyState::Revoked) && !self.is_expired()
+        !matches!(self.metadata.state, crate::KeyState::Revoked) && !self.is_expired()
     }
 }
 
 /// Trait for the key derivation functions
+/// 
+/// Enables secure storage or transport of keys by encrypting them
 pub trait KeyDerivation {
     /// Derive a key from the input material
-    /// 
-    /// TODO: We'll need to implement this for HKDF, PBKDF2, etc.
     fn derive(&self, input: &[u8], salt: &[u8], info: &[u8]) -> Result<SecretKey>;
 }
 

@@ -1,7 +1,5 @@
 //! Error types for rust-keyvault
 
-use core::error;
-use std::fmt;
 use thiserror::Error;
 
 /// Custom `Result` type 

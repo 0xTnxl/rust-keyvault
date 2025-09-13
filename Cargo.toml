@@ -19,6 +19,7 @@ rand_core = "0.6"
 aead = "0.5"
 
 rand_chacha = "0.3"
+hex = "0.4"
 
 [dev-dependencies]
 hex = "0.4"
