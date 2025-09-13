@@ -176,7 +176,7 @@ impl KeyStore for MemoryStore {
         let new_version = current_key.metadata.version + 1;
         let new_key_id = KeyId::generate_versioned(id, new_version)?;
 
-        let new_secret_key = Self::generate_new_key_material(current_key.key_algorithm())?;
+        let new_secret_key = Self::generate_new_key_material(current_key.metadata.algorithm)?;
         let new_metadata = KeyMetadata {
             id: new_key_id.clone(),
             algorithm: current_key.metadata.algorithm,
