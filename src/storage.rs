@@ -10,6 +10,8 @@ use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
 use sha2::{Sha256, Digest};
 use std::time::SystemTime;
+use argon2::{Argon2, PasswordHasher, PasswordHash, PasswordVerifier};
+use argon2::{Algorithm as Argon2Algorithm, Version, Params};
 
 /// Trait for key storage backends
 pub trait KeyStore: Send + Sync {
@@ -77,8 +79,6 @@ struct PersistedKey {
 /// Trait for encrypted storage
 pub trait EncryptedStore: KeyStore {
     /// Initiate the store with a master key
-    /// 
-    /// TODO: Implement master key derivation and rotation
     fn init_with_password(&mut self, password: &[u8]) -> Result<()>; 
 
     /// Re-encrypt all keys with a new master key
@@ -88,9 +88,7 @@ pub trait EncryptedStore: KeyStore {
     fn is_unlocked(&self) -> bool;
 }
 
-/// In-memory key store (for testing/development)
-/// 
-/// TODO: Replace with our actual implementation later on
+/// In-memory key store
 pub struct MemoryStore {
     keys: Arc<RwLock<HashMap<KeyId, VersionedKey>>>,
 }
@@ -104,7 +102,7 @@ impl MemoryStore {
     }
 
     /// Generate new key material for the given algorithm
-    fn generate_new_key_material(algorithm: Algorithm) -> Result<crate::key::SecretKey> {
+    fn generate_new_key_material(algorithm: crate::Algorithm) -> Result<crate::key::SecretKey> {
         use crate::crypto::{SimpleSymmetricKeyGenerator, KeyGenerator};
         use rand_chacha::ChaCha20Rng;
         use rand_core::SeedableRng;
@@ -310,14 +308,12 @@ impl FileStore {
 
         let encrypted_key = if self.config.encrypted {
             if let Some(master_key) = &self.master_key {
-                // Create AEAD cipher and nonce generator
                 let aead = RuntimeAead;
                 let mut nonce_gen = RandomNonceGenerator::new(
                     ChaCha20Rng::from_entropy(),
                     RuntimeAead::NONCE_SIZE
                 );
 
-                // Generate nonce and encrypt
                 let key_id_bytes = format!("{:?}", key.metadata.id);
                 let nonce = nonce_gen.generate_nonce(key_id_bytes.as_bytes())?;
                 let encrypted_bytes = aead.encrypt(
@@ -327,7 +323,6 @@ impl FileStore {
                     b"rust-keyvault-key-encryption",
                 )?;
 
-                // Prepare nonce to encrypted data (the nonce doesn't need to be secret)
                 let mut result = nonce;
                 result.extend_from_slice(&encrypted_bytes);
                 result
@@ -346,6 +341,7 @@ impl FileStore {
         serde_json::to_vec(&persisted)
             .map_err(|e| crate::Error::storage(format!("serilization failed: {}", e))) 
     }
+
     /// Deserialize and optionally decrypt a key
     fn deserialize_key(&self, data: &[u8]) -> Result<VersionedKey> {
         let persisted: PersistedKey = serde_json::from_slice(data)
@@ -354,19 +350,18 @@ impl FileStore {
         let key_bytes = if self.config.encrypted {
             if let Some(master_key) = &self.master_key {
                 let aead = RuntimeAead;
-
+                
                 if persisted.encrypted_key.len() < RuntimeAead::NONCE_SIZE {
-                    return Err(crate::Error::storage("encrypted key too short"));
+                    return Err(crate::Error::storage("encrypted key too short - corrupted data"));
                 }
-
+                
                 let (nonce, ciphertext) = persisted.encrypted_key.split_at(RuntimeAead::NONCE_SIZE);
-
-                // Decrypt
+                
                 aead.decrypt(
                     master_key,
                     nonce,
                     ciphertext,
-                    b"rust-keyvault-key-encryption", 
+                    b"rust-keyvault-key-encryption" 
                 )?
             } else {
                 return Err(crate::Error::storage("encrypted key but no master key available"));
@@ -382,34 +377,40 @@ impl FileStore {
             metadata: persisted.metadata,
         })
     }
-
-    /// Derive a master key from a password using PBKDF2
-    /// TODO: In production, we'll need to use proper KDF like Argon2 or scrypt
-    pub fn derive_master_key(password: &[u8], salt: &[u8]) -> Result<crate::key::SecretKey> {
-        use sha2::{Sha256, Digest};
-        
-        // Simple PBKDF2-like derivation (NOT production-ready)
-        let mut key = [0u8; 32];
-        let mut hasher = Sha256::new();
-        hasher.update(password);
-        hasher.update(salt);
-        
-        // Multiple rounds for key stretching
-        let mut current = hasher.finalize();
-        for _ in 0..10000 {
-            let mut hasher = Sha256::new();
-            hasher.update(&current);
-            current = hasher.finalize();
+    
+    /// Initialize with password-derived master key (now using Argon2)
+    pub fn init_with_password(&mut self, password: &[u8]) -> Result<()> {
+        if !self.config.encrypted {
+            return Err(crate::Error::storage("encryption not enabled in config"));
         }
         
-        key.copy_from_slice(&current);
+        let salt = b"rust-keyvault-argon2-salt-v1-fixed-32b"; 
+        let master_key = Self::derive_master_key(password, salt)?;
+        self.set_master_key(master_key)?;
         
-        // Default to ChaCha20Poly1305 for master key
-        crate::key::SecretKey::from_bytes(key.to_vec(), crate::Algorithm::ChaCha20Poly1305)
+        Ok(())
+    }
+
+    /// Derive a master key from a password using Argon2id
+    pub fn derive_master_key(password: &[u8], salt: &[u8]) -> Result<crate::key::SecretKey> {
+        let params = Params::new(
+            19456, 
+            2,
+            1,
+            Some(32),
+        ).map_err(|e| crate::Error::crypto(format!("invalid Argon2 params: {}", e)))?;
+        
+        let argon2 = Argon2::new(Argon2Algorithm::Argon2id, Version::V0x13, params);
+
+        let mut key_bytes = [0u8; 32];
+        argon2.hash_password_into(password, salt, &mut key_bytes)
+            .map_err(|e| crate::Error::crypto(format!("Argon2 derivation failed: {}", e)))?;
+
+        crate::key::SecretKey::from_bytes(key_bytes.to_vec(), crate::Algorithm::ChaCha20Poly1305)
     }
 
     /// Generate new key material for the given algorithm
-    fn generate_new_key_material(&self, algorithm: Algorithm) -> Result<crate::key::SecretKey> {
+    fn generate_new_key_material(&self, algorithm: crate::Algorithm) -> Result<crate::key::SecretKey> {
         use crate::crypto::{SimpleSymmetricKeyGenerator, KeyGenerator};
         use rand_chacha::ChaCha20Rng;
         use rand_core::SeedableRng;

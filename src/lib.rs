@@ -28,11 +28,16 @@ pub use error::{Error, Result};
 pub struct KeyId([u8; 16]);
 
 impl KeyId {
-    /// Generates a new random KeyId.
-    /// 
-    /// TODO: Implement using rand_core::RngCore for secure randomness.
+    /// Generate a new random KeyId
     pub fn generate() -> Result<Self> {
-        todo!("Implement random ID generation")
+        use rand_chacha::ChaCha20Rng;
+        use rand_core::{SeedableRng, RngCore};
+        
+        let mut rng = ChaCha20Rng::from_entropy();
+        let mut bytes = [0u8; 16];
+        rng.fill_bytes(&mut bytes);
+        
+        Ok(Self(bytes))
     }
 
     /// Create a KeyId from raw bytes.
@@ -47,15 +52,16 @@ impl KeyId {
 
     /// Generate a versioned KeyId based on a base ID and version
     pub fn generate_versioned(base_id: &KeyId, version: u32) -> Result<Self> {
+        use sha2::{Sha256, Digest};
         let mut hasher = Sha256::new();
         hasher.update(base_id.as_bytes());
         hasher.update(&version.to_le_bytes());
-        hasher.update(b"rust-keyvault-version");
-
+        hasher.update(b"rust-keyvault-version"); // Domain separator
+        
         let hash = hasher.finalize();
         let mut id_bytes = [0u8; 16];
         id_bytes.copy_from_slice(&hash[..16]);
-
+        
         Ok(Self(id_bytes))
     }
 

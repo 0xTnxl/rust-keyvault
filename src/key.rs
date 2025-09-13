@@ -32,10 +32,20 @@ impl SecretKey {
     }
 
     /// Generate a new random key for the given algorithm
-    /// 
-    /// TODO: Implement using rand_core:RngCore
     pub fn generate(algorithm: Algorithm) -> Result<Self> {
-        todo!("Implement key generation")
+        use crate::crypto::{SimpleSymmetricKeyGenerator, KeyGenerator};
+        use rand_chacha::ChaCha20Rng;
+        use rand_core::SeedableRng;
+        
+        let mut rng = ChaCha20Rng::from_entropy();
+        let generator = SimpleSymmetricKeyGenerator;
+        let params = crate::crypto::KeyGenParams {
+            algorithm,
+            seed: None,
+            key_size: None,
+        };
+        
+        generator.generate_with_params(&mut rng, params)
     }
 
     /// Get the algorithm for this key
