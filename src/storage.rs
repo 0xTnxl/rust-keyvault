@@ -177,6 +177,7 @@ impl KeyStore for MemoryStore {
         let new_secret_key = Self::generate_new_key_material(current_key.metadata.algorithm)?;
         let new_metadata = KeyMetadata {
             id: new_key_id.clone(),
+            base_id: current_key.metadata.base_id.clone(),
             algorithm: current_key.metadata.algorithm,
             created_at: SystemTime::now(),
             expires_at: current_key.metadata.expires_at,
@@ -564,6 +565,7 @@ impl KeyStore for FileStore {
             expires_at: current_key.metadata.expires_at,
             state: KeyState::Active,
             version: new_version,
+            base_id: current_key.metadata.base_id.clone(),
         };
         
         let new_versioned_key = VersionedKey {
@@ -582,7 +584,7 @@ impl KeyStore for FileStore {
         
         // Look for all keys with the same base ID but different versions
         for (stored_id, key) in &self.keys {
-            if KeyId::same_base_id(id, stored_id) {
+            if &key.metadata.base_id == id {
                 versions.push(key.clone());
             }
         }
@@ -716,6 +718,7 @@ mod tests {
         let secret_key = SecretKey::from_bytes(vec![0u8; 32], Algorithm::ChaCha20Poly1305).unwrap();
         let metadata = KeyMetadata {
             id: key_id.clone(),
+            base_id: key_id.clone(),
             algorithm: Algorithm::ChaCha20Poly1305,
             created_at: SystemTime::now(),
             state: KeyState::Active,
@@ -764,6 +767,7 @@ mod tests {
         let secret_key = SecretKey::from_bytes(vec![0x42; 32], Algorithm::ChaCha20Poly1305).unwrap();
         let metadata = KeyMetadata {
             id: key_id.clone(),
+            base_id: key_id.clone(),
             algorithm: Algorithm::ChaCha20Poly1305,
             created_at: SystemTime::now(),
             expires_at: None,
@@ -809,6 +813,7 @@ mod tests {
         let secret_key = SecretKey::from_bytes(vec![0xFF; 32], Algorithm::ChaCha20Poly1305).unwrap();
         let metadata = KeyMetadata {
             id: key_id.clone(),
+            base_id: key_id.clone(),
             algorithm: Algorithm::ChaCha20Poly1305,
             created_at: SystemTime::now(),
             expires_at: None,
@@ -862,6 +867,7 @@ mod tests {
         let secret_key = SecretKey::from_bytes(vec![0xAB; 32], Algorithm::Aes256Gcm).unwrap();
         let metadata = KeyMetadata {
             id: key_id.clone(),
+            base_id: key_id.clone(),
             algorithm: Algorithm::Aes256Gcm,
             created_at: SystemTime::now(),
             expires_at: None,
@@ -908,6 +914,7 @@ mod tests {
             let secret_key = SecretKey::from_bytes(original_key_bytes.clone(), Algorithm::ChaCha20Poly1305).unwrap();
             let metadata = KeyMetadata {
                 id: key_id.clone(),
+                base_id: key_id.clone(),
                 algorithm: Algorithm::ChaCha20Poly1305,
                 created_at: SystemTime::now(),
                 expires_at: None,

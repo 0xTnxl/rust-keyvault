@@ -1,7 +1,5 @@
 //! Error types for rust-keyvault
 
-#![allow(unused_imports)]
-
 use core::error;
 use std::fmt;
 use thiserror::Error;

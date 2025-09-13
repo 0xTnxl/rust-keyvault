@@ -30,9 +30,6 @@ pub struct KeyId([u8; 16]);
 impl KeyId {
     /// Generate a new random KeyId
     pub fn generate() -> Result<Self> {
-        use rand_chacha::ChaCha20Rng;
-        use rand_core::{SeedableRng, RngCore};
-        
         let mut rng = ChaCha20Rng::from_entropy();
         let mut bytes = [0u8; 16];
         rng.fill_bytes(&mut bytes);
@@ -65,12 +62,9 @@ impl KeyId {
         Ok(Self(id_bytes))
     }
 
-    /// Extract the base ID pattern (for finding related version)
-    /// This is a simplified approach
-    pub fn same_base_id(id1: &KeyId, id2: &KeyId) -> bool {
-        // For now we'll store this info in metadata and use a different approach
-        // This is actually a place holder that always returns false for non-identical IDs
-        id1 == id2
+    /// Check for same base id for any two keys
+    pub fn same_base_id(_id1: &KeyId, _id2: &KeyId) -> bool {
+        false
     }
 
     /// Generate a new random base KeyId for a key family
@@ -103,6 +97,8 @@ pub enum KeyState {
 pub struct KeyMetadata {
     /// Unique identifier for the key
     pub id: KeyId,
+    /// Base identifier for the key
+    pub base_id: KeyId,
     /// Current state in the key lifecycle
     pub state: KeyState,
     /// When this key was created
