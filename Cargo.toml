@@ -1,7 +1,7 @@
 [package]
 name = "rust-keyvault"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 authors = ["Blessed Tosin-Oyinbo <tosinoyinboblessed@gmail.com>"] 
 license = "MIT OR Apache-2.0"
 description = "A secure, modern cryptographic key management library for Rust"

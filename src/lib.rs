@@ -50,8 +50,8 @@ impl KeyId {
         use sha2::{Sha256, Digest};
         let mut hasher = Sha256::new();
         hasher.update(base_id.as_bytes());
-        hasher.update(&version.to_le_bytes());
-        hasher.update(b"rust-keyvault-version"); // Domain separator
+        hasher.update(version.to_le_bytes());
+        hasher.update(b"rust-keyvault-version");
         
         let hash = hasher.finalize();
         let mut id_bytes = [0u8; 16];

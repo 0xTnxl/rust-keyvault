@@ -14,7 +14,7 @@ type AesNonce = aes_gcm::Nonce<U12>;
 pub trait SecureRandom: RngCore + CryptoRng {
     /// Fill a buffer with cryptographically secure random bytes
     fn fill_secure_bytes(&mut self, dest: &mut [u8]) -> Result<()> {
-        self.try_fill_bytes(dest).map_err(|e| Error::crypto(format!("failed to fill secure bytes: {}", e)))?;
+        self.try_fill_bytes(dest).map_err(|e| Error::crypto(format!("failed to fill secure bytes: {}", {e})))?;
         Ok(())
     }
 }
@@ -134,7 +134,7 @@ impl crate::crypto::AEAD for RuntimeAead {
                 let n: &ChaChaNonce = ChaChaNonce::from_slice(nonce);
                 cipher
                     .encrypt(n, Payload { msg: plaintext, aad: associated_data })
-                    .map_err(|e| Error::crypto(format!("ChaCha20-Poly1305 encryption failed: {}", e))) // produce concrete String
+                    .map_err(|e| Error::crypto(format!("ChaCha20-Poly1305 encryption failed: {}", {e}))) // produce concrete String
             }
             Algorithm::Aes256Gcm => {
                 Self::check_key_len(key, 32)?;
@@ -142,9 +142,9 @@ impl crate::crypto::AEAD for RuntimeAead {
                 let n: &AesNonce = AesNonce::from_slice(nonce);
                 cipher
                     .encrypt(n, Payload { msg: plaintext, aad: associated_data })
-                    .map_err(|e| Error::crypto(format!("AES-256-GCM encryption failed: {}", e)))
+                    .map_err(|e| Error::crypto(format!("AES-256-GCM encryption failed: {}", {e})))
             }
-            alg => Err(Error::crypto(format!("algorithm {:?} not supported for AEAD", alg))),
+            alg => Err(Error::crypto(format!("algorithm {alg:?} not supported for AEAD"))),
         }
     }
 
@@ -166,7 +166,7 @@ impl crate::crypto::AEAD for RuntimeAead {
                 let n: &ChaChaNonce = ChaChaNonce::from_slice(nonce);
                 cipher
                     .decrypt(n, Payload { msg: ciphertext, aad: associated_data })
-                    .map_err(|e| Error::crypto(format!("ChaCha20-Poly1305 decryption failed: {}", e)))
+                    .map_err(|e| Error::crypto(format!("ChaCha20-Poly1305 decryption failed: {}", {e})))
             }
             Algorithm::Aes256Gcm => {
                 Self::check_key_len(key, 32)?;
@@ -174,9 +174,9 @@ impl crate::crypto::AEAD for RuntimeAead {
                 let n: &AesNonce = AesNonce::from_slice(nonce);
                 cipher
                     .decrypt(n, Payload { msg: ciphertext, aad: associated_data })
-                    .map_err(|e| Error::crypto(format!("AES-256-GCM decryption failed: {}", e)))
+                    .map_err(|e| Error::crypto(format!("AES-256-GCM decryption failed: {}", {e})))
             }
-            alg => Err(Error::crypto(format!("algorithm {:?} not supported for AEAD", alg))),
+            alg => Err(Error::crypto(format!("algorithm {alg:?} not supported for AEAD"))),
         }
     }
 }

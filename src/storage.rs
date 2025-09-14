@@ -106,6 +106,12 @@ pub struct MemoryStore {
     keys: Arc<RwLock<HashMap<KeyId, VersionedKey>>>,
 }
 
+impl Default for MemoryStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MemoryStore {
     /// Create a new in-memory store
     pub fn new() -> Self {
@@ -144,13 +150,13 @@ impl KeyStore for MemoryStore {
         let keys = self.keys.read().map_err(|_| crate::Error::storage("lock poisoned"))?;
         keys.get(id)
             .cloned()
-            .ok_or_else(|| crate::Error::storage(format!("key not found: {:?}", id)))
+            .ok_or_else(|| crate::Error::storage(format!("key not found: {id:?}")))
     }
 
     fn delete(&mut self, id: &KeyId) -> Result<()> {
         let mut keys = self.keys.write().map_err(|_| crate::Error::storage("lock poisoned"))?;
         keys.remove(id)
-            .ok_or_else(|| crate::Error::storage(format!("key not found: {:?}", id)))?;
+            .ok_or_else(|| crate::Error::storage(format!("key not found: {id:?}")))?;
         Ok(())
     }
 
@@ -165,7 +171,7 @@ impl KeyStore for MemoryStore {
             versioned_key.metadata = metadata;
             Ok(())
         } else {
-            Err(crate::Error::storage(format!("key not found: {:?}", id)))
+            Err(crate::Error::storage(format!("key not found: {id:?}")))
         }
     }
 
@@ -225,7 +231,7 @@ impl KeyStore for MemoryStore {
         versions.sort_by_key(|k| k.metadata.version);
 
         if versions.is_empty() {
-            return Err(crate::Error::storage(format!("no versions found for this key: {:?}", id)))
+            return Err(crate::Error::storage(format!("no versions found for this key: {id:?}")))
         }
         Ok(versions)
     }
@@ -238,7 +244,7 @@ impl KeyStore for MemoryStore {
             .into_iter()
             .filter(|k| matches!(k.metadata.state, KeyState::Active | KeyState::Rotating))
             .max_by_key(|k| k.metadata.version)
-            .ok_or_else(|| crate::Error::storage(format!("no active key found for: {:?}", id)))
+            .ok_or_else(|| crate::Error::storage(format!("no active key found for: {id:?}")))
     }
 }
 
@@ -319,7 +325,7 @@ impl FileStore {
     /// 
     /// Returns the filesystem path where the key's own encrypted data is stored
     fn key_path(&self, id: &KeyId) -> PathBuf {
-        let filename = format!("{:?}.json", id);
+        let filename = format!("{id:?}.json");
         self.path.join(filename)
     }
 
@@ -360,13 +366,13 @@ impl FileStore {
         };
 
         serde_json::to_vec(&persisted)
-            .map_err(|e| crate::Error::storage(format!("serilization failed: {}", e))) 
+            .map_err(|e| crate::Error::storage(format!("serilization failed: {e}"))) 
     }
 
     /// Deserialize and optionally decrypt a key
     fn deserialize_key(&self, data: &[u8]) -> Result<VersionedKey> {
         let persisted: PersistedKey = serde_json::from_slice(data)
-            .map_err(|e| crate::Error::storage(format!("deserialization failed: {}", e)))?;
+            .map_err(|e| crate::Error::storage(format!("deserialization failed: {e}")))?;
         
         let key_bytes = if self.config.encrypted {
             if let Some(master_key) = &self.master_key {
@@ -419,13 +425,13 @@ impl FileStore {
             2,
             1,
             Some(32),
-        ).map_err(|e| crate::Error::crypto(format!("invalid Argon2 params: {}", e)))?;
+        ).map_err(|e| crate::Error::crypto(format!("invalid Argon2 params: {e}")))?;
         
         let argon2 = Argon2::new(Argon2Algorithm::Argon2id, Version::V0x13, params);
 
         let mut key_bytes = [0u8; 32];
         argon2.hash_password_into(password, salt, &mut key_bytes)
-            .map_err(|e| crate::Error::crypto(format!("Argon2 derivation failed: {}", e)))?;
+            .map_err(|e| crate::Error::crypto(format!("Argon2 derivation failed: {e}")))?;
 
         crate::key::SecretKey::from_bytes(key_bytes.to_vec(), crate::Algorithm::ChaCha20Poly1305)
     }
@@ -524,7 +530,7 @@ impl KeyStore for FileStore {
         // Load from disk
         let key_path = self.key_path(id);
         if !key_path.exists() {
-            return Err(crate::Error::storage(format!("key file not found: {:?}", id)));
+            return Err(crate::Error::storage(format!("key file not found: {id:?}")));
         }
         
         let data = fs::read(&key_path)?;
@@ -541,7 +547,7 @@ impl KeyStore for FileStore {
         
         // Remove from cache
         self.keys.remove(id)
-            .ok_or_else(|| crate::Error::storage(format!("key not found: {:?}", id)))?;
+            .ok_or_else(|| crate::Error::storage(format!("key not found: {id:?}")))?;
         
         Ok(())
     }
@@ -558,7 +564,7 @@ impl KeyStore for FileStore {
             self.store(key_copy)?;
             Ok(())
         } else {
-            Err(crate::Error::storage(format!("key not found: {:?}", id)))
+            Err(crate::Error::storage(format!("key not found: {id:?}")))
         }
     }
     
@@ -606,7 +612,7 @@ impl KeyStore for FileStore {
         let mut versions = Vec::new();
         
         // Look for all keys with the same base ID but different versions
-        for (_stored_id, key) in &self.keys {
+        for key in self.keys.values() {
             if &key.metadata.base_id == id {
                 versions.push(key.clone());
             }
@@ -616,7 +622,7 @@ impl KeyStore for FileStore {
         versions.sort_by_key(|k| k.metadata.version);
         
         if versions.is_empty() {
-            return Err(crate::Error::storage(format!("no versions found for key: {:?}", id)));
+            return Err(crate::Error::storage(format!("no versions found for key: {id:?}")));
         }
         
         Ok(versions)
@@ -630,7 +636,7 @@ impl KeyStore for FileStore {
             .into_iter()
             .filter(|k| matches!(k.metadata.state, KeyState::Active | KeyState::Rotating))
             .max_by_key(|k| k.metadata.version)
-            .ok_or_else(|| crate::Error::storage(format!("no active key found for: {:?}", id)))
+            .ok_or_else(|| crate::Error::storage(format!("no active key found for: {id:?}")))
     }
 }
 
@@ -659,7 +665,7 @@ impl PersistentStorage for FileStore {
                         self.keys.insert(key.metadata.id.clone(), key);
                     }
                     Err(e) => {
-                        eprintln!("WARNING: Failed to load key from {:?}: {}", path, e);
+                        eprintln!("WARNING: Failed to load key from {path:?}: {e}");
                     }
                 }
             }
