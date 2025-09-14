@@ -134,11 +134,38 @@ mod tests {
 
     #[test]
     fn test_secret_key_zerioze() {
-        // This test verifies that SecretKey is properly zeroed on drop
-        // Later, we would verify that memory is actually zeroed
-        let key = SecretKey::from_bytes(vec![0x42], Algorithm::ChaCha20Poly1305).unwrap();
-        assert_eq!(key.algorithm(), Algorithm::ChaCha20Poly1305);
 
-        // The key would be zeroed on drop
+        // Test ChaCha2--Poly1305
+        {
+            let original_bytes  = vec![0x42; 32];
+            let key = SecretKey::from_bytes(original_bytes, Algorithm::ChaCha20Poly1305).unwrap();
+            let _key_ptr = key.expose_secret().as_ptr();
+            assert_eq!(key.expose_secret()[0], 0x42);
+
+            drop(key);
+
+            // We can't actually verify the memory that was zeroized here
+            // because the memory may have been reused.  So basically, this
+            // is more of a "does it panic" test and verification that zeroize is called properly
+        }
+
+        // Test AES-256-GCM
+        {
+            let key = SecretKey::from_bytes(vec![0x33; 32], Algorithm::Aes256Gcm).unwrap();
+            assert_eq!(key.expose_secret().len(), 32);
+            assert_eq!(key.algorithm(), Algorithm::Aes256Gcm);
+        }
+
+        // Test invalid keys sizes (should fail)
+        {
+            let result = SecretKey::from_bytes(vec![0x11; 1], Algorithm::ChaCha20Poly1305);
+            assert!(result.is_err());
+            
+            let result = SecretKey::from_bytes(vec![0x11; 16], Algorithm::ChaCha20Poly1305); 
+            assert!(result.is_err());
+            
+            let result = SecretKey::from_bytes(vec![0x11; 64], Algorithm::ChaCha20Poly1305);
+            assert!(result.is_err());
+        }
     }
 }

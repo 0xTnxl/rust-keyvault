@@ -45,6 +45,9 @@ pub trait KeyStore: Send + Sync {
 }
 
 /// Extended trait for advanced key lifecycle management
+/// 
+/// Provides methods for managing key states and cleanup policies
+/// This exxtends `KeyStore` with operations for key deprecation and revocation
 pub trait KeyLifeCycle: KeyStore {
     /// Mark a particular key as deprecated (key should be able to decrypt but not encrypt)
     fn deprecate_key(&mut self, id: &KeyId) -> Result<()>;
@@ -80,7 +83,10 @@ struct PersistedKey {
     encrypted_key: Vec<u8>,
 }
 
-/// Trait for encrypted storage
+/// Trait for encrypted storage backends
+/// 
+/// Provides password-based intialisation and re-keying capabilites
+/// for storage backends that support encryption at rest
 pub trait EncryptedStore: KeyStore {
     /// Initiate the store with a master key
     fn init_with_password(&mut self, password: &[u8]) -> Result<()>; 
