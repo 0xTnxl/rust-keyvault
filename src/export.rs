@@ -1,8 +1,5 @@
 //! Key import/export functionality for secure key exchange
-//!
-//! Provides secure key export and import between vaults using password-based
-//! encryption. Exported keys are encrypted with Argon2id-derived keys and
-//! include metadata for validation.
+
 
 use crate::{Algorithm, KeyMetadata, Result, key::SecretKey};
 use serde::{Deserialize, Serialize};

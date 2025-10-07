@@ -130,13 +130,6 @@ pub struct VaultInfo {
 
 impl VaultBackup {
     /// Create a new encrypted backup
-    ///
-    /// # Arguments
-    /// * `data` - The backup data to encrypt
-    /// * `password` - Password for encryption
-    ///
-    /// # Security
-    /// Uses Argon2id for key derivation and XChaCha20Poly1305 for encryption
     pub fn new(backup_data: &BackupData, password: &[u8], config: &BackupConfig) -> Result<Self> {
         use crate::crypto::{NonceGenerator, RuntimeAead, RandomNonceGenerator, AEAD};
         use argon2::{Argon2, Algorithm as Argon2Algo, Params, Version};
@@ -234,18 +227,6 @@ impl VaultBackup {
     }
     
     /// Decrypt and restore a backup
-    ///
-    /// # Arguments
-    /// * `password` - Password used for encryption
-    ///
-    /// # Returns
-    /// The decrypted backup data
-    ///
-    /// # Errors
-    /// Returns an error if:
-    /// - Password is incorrect
-    /// - Data is corrupted
-    /// - HMAC verification fails
     pub fn decrypt(&self, password: &[u8]) -> Result<BackupData> {
         use crate::crypto::{RuntimeAead, AEAD};
         use argon2::{Argon2, Algorithm as Argon2Algo, Params, Version};

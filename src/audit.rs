@@ -1,7 +1,5 @@
 //! Audit logging for key operations
-//!
-//! Provides structured logging of security-relevant events for compliance
-//! and security monitoring.
+
 
 use crate::{KeyState, Algorithm};
 use serde::{Deserialize, Serialize};
