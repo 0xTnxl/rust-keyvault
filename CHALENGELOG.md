@@ -120,7 +120,7 @@ Benchmarks on AMD Ryzen 9 5950X (3.4 GHz base):
 
 ### Security Audit
 
-**Status:** ✅ PASSED (October 2025)
+**Status:** PASSED (October 2025)
 
 **Audit Scope:**
 - Static analysis: Zero unsafe code (`#![forbid(unsafe_code)]`)

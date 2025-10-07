@@ -7,20 +7,20 @@
 
 A secure, production-grade cryptographic key management library for Rust.
 
-## ✨ Features
+## Features
 
-- 🔐 **Secure Key Storage** - Encrypted at-rest with Argon2id + XChaCha20-Poly1305
-- 🔄 **Key Rotation** - Seamless key lifecycle management with versioning
-- 💾 **Persistent Storage** - File-based backend with optional encryption
-- 📦 **Import/Export** - Secure key exchange between vaults (new in v0.2.0!)
-- 🔙 **Backup/Restore** - Encrypted vault backups with compression (new in v0.2.0!)
-- 🔍 **Audit Logging** - Comprehensive security event tracking
-- ⚡ **High Performance** - ~2.4µs key generation, efficient storage
-- 🛡️ **Memory Safety** - Automatic secret zeroization, constant-time operations
-- 🧵 **Thread-Safe** - Concurrent access with RwLock protection
-- 📊 **Benchmarked** - Performance baselines established with Criterion
+- **Secure Key Storage** - Encrypted at-rest with Argon2id + XChaCha20-Poly1305
+- **Key Rotation** - Seamless key lifecycle management with versioning
+- **Persistent Storage** - File-based backend with optional encryption
+- **Import/Export** - Secure key exchange between vaults (new in v0.2.0!)
+- **Backup/Restore** - Encrypted vault backups with compression (new in v0.2.0!)
+- **Audit Logging** - Comprehensive security event tracking
+- **High Performance** - ~2.4µs key generation, efficient storage
+- **Memory Safety** - Automatic secret zeroization, constant-time operations
+- **Thread-Safe** - Concurrent access with RwLock protection
+- **Benchmarked** - Performance baselines established with Criterion
 
-## 🔒 Security
+## Security
 
 - **Zero Unsafe Code:** `#![forbid(unsafe_code)]` - completely memory safe
 - **Security Audit:** ✅ Passed (October 2025) - see [SECURITY.md](SECURITY.md)
@@ -28,7 +28,7 @@ A secure, production-grade cryptographic key management library for Rust.
 - **Constant-Time Operations:** Timing-attack resistant comparisons
 - **Automatic Zeroization:** Secrets cleared from memory on drop
 
-## 📋 Supported Algorithms
+## Supported Algorithms
 
 | Algorithm | Type | Key Size | Nonce Size | Use Case |
 |-----------|------|----------|------------|----------|
@@ -40,7 +40,7 @@ A secure, production-grade cryptographic key management library for Rust.
 
 *Asymmetric algorithms partially implemented - full support in v0.3.0
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -153,7 +153,7 @@ Benchmarks run on AMD Ryzen 9 5950X (3.4 GHz base):
 
 *Full benchmark suite: `cargo bench`*
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────┐
@@ -193,7 +193,7 @@ Benchmarks run on AMD Ryzen 9 5950X (3.4 GHz base):
 └─────────────────────────────────────────┘
 ```
 
-## 🔐 Security Features
+## Security Features
 
 - **Modern Cryptography**: ChaCha20-Poly1305, XChaCha20-Poly1305, AES-256-GCM AEAD
 - **Memory Safety**: Automatic secret zeroization with `zeroize` crate
@@ -203,14 +203,14 @@ Benchmarks run on AMD Ryzen 9 5950X (3.4 GHz base):
 - **Constant-Time Operations**: Timing-attack resistant key comparisons
 - **Secure Random**: ChaCha20-based CSPRNG for all random generation
 
-## 📚 Documentation
+## Documentation
 
 - [API Documentation](https://docs.rs/rust-keyvault)
 - [Usage Examples](examples/)
 - [Security Policy](SECURITY.md) - Threat model, security guarantees, best practices
 - [Changelog](CHANGELOG.md) - Version history and release notes
 
-## 🧪 Testing
+## Testing
 
 Run the test suite:
 
@@ -225,11 +225,11 @@ cargo test --test '*'
 cargo bench
 ```
 
-## 📝 Contributing
+## Contributing
 
 Contributions are welcome! Please read our security policy in [SECURITY.md](SECURITY.md) before submitting changes.
 
-## 📄 License
+## License
 
 Licensed under either of:
 

@@ -1,16 +1,12 @@
 //! Core cryptographic traits and primitives
 
-use crate::{Error, key::SecretKey, Algorithm, Result};
-use rand_core::{CryptoRng, RngCore};
-use aead::{Aead, KeyInit, Payload, generic_array::typenum::U12};
-use chacha20poly1305::{
-    ChaCha20Poly1305, 
-    XChaCha20Poly1305, 
-    Key as ChaChaKey, 
-    Nonce as ChaChaNonce,
-    XNonce,  
-};
+use crate::{key::SecretKey, Algorithm, Error, Result};
+use aead::{generic_array::typenum::U12, Aead, KeyInit, Payload};
 use aes_gcm::Aes256Gcm;
+use chacha20poly1305::{
+    ChaCha20Poly1305, Key as ChaChaKey, Nonce as ChaChaNonce, XChaCha20Poly1305, XNonce,
+};
+use rand_core::{CryptoRng, RngCore};
 
 // Explicit concrete type aliases with explicit sizes
 type AesKey = aes_gcm::Key<Aes256Gcm>;
@@ -20,7 +16,9 @@ type AesNonce = aes_gcm::Nonce<U12>;
 pub trait SecureRandom: RngCore + CryptoRng {
     /// Fill a buffer with cryptographically secure random bytes
     fn fill_secure_bytes(&mut self, dest: &mut [u8]) -> Result<()> {
-        self.try_fill_bytes(dest).map_err(|e| Error::crypto("fill_bytes", &format!("failed to fill secure bytes: {}", e)))?;
+        self.try_fill_bytes(dest).map_err(|e| {
+            Error::crypto("fill_bytes", &format!("failed to fill secure bytes: {}", e))
+        })?;
         Ok(())
     }
 }
@@ -35,7 +33,9 @@ pub trait KeyGenerator {
 
     /// Generate a new key with specific parameters
     fn generate_with_params<R: SecureRandom>(
-        &self, rng: &mut R, params: KeyGenParams,
+        &self,
+        rng: &mut R,
+        params: KeyGenParams,
     ) -> Result<Self::Key>;
 }
 /// A simple symmetric key generator implementation
@@ -47,14 +47,16 @@ impl KeyGenerator for SimpleSymmetricKeyGenerator {
     fn generate<R: SecureRandom>(&self, rng: &mut R) -> Result<Self::Key> {
         let algorithm = Algorithm::ChaCha20Poly1305; // default algorithm
         let key_len = algorithm.key_size();
-        let mut buf = vec![0u8; key_len]; 
+        let mut buf = vec![0u8; key_len];
         rng.fill_secure_bytes(&mut buf)?;
         SecretKey::from_bytes(buf, algorithm)
     }
 
     fn generate_with_params<R: SecureRandom>(
-            &self, rng: &mut R, params: KeyGenParams,
-        ) -> Result<Self::Key> {
+        &self,
+        rng: &mut R,
+        params: KeyGenParams,
+    ) -> Result<Self::Key> {
         let algorithm = params.algorithm;
         let key_len = params.key_size.unwrap_or(algorithm.key_size());
         let mut buf = vec![0u8; key_len];
@@ -112,7 +114,7 @@ impl RuntimeAead {
                     "invalid key size: expected {}, got {}",
                     expected,
                     key.expose_secret().len()
-                )
+                ),
             ));
         }
         Ok(())
@@ -136,38 +138,86 @@ impl crate::crypto::AEAD for RuntimeAead {
             Algorithm::ChaCha20Poly1305 => {
                 Self::check_key_len(key, 32)?;
                 if nonce.len() != 12 {
-                    return Err(Error::crypto("nonce_validation", &format!("ChaCha20Poly1305 requires 12-byte nonce, got {}", nonce.len())));
+                    return Err(Error::crypto(
+                        "nonce_validation",
+                        &format!(
+                            "ChaCha20Poly1305 requires 12-byte nonce, got {}",
+                            nonce.len()
+                        ),
+                    ));
                 }
                 let cipher = ChaCha20Poly1305::new(ChaChaKey::from_slice(key.expose_secret()));
                 // annotate nonce type to help type inference
                 let n: &ChaChaNonce = ChaChaNonce::from_slice(nonce);
                 cipher
-                    .encrypt(n, Payload { msg: plaintext, aad: associated_data })
-                    .map_err(|e| Error::crypto("encrypt", &format!("ChaCha20-Poly1305 encryption failed: {}", e)))
+                    .encrypt(
+                        n,
+                        Payload {
+                            msg: plaintext,
+                            aad: associated_data,
+                        },
+                    )
+                    .map_err(|e| {
+                        Error::crypto(
+                            "encrypt",
+                            &format!("ChaCha20-Poly1305 encryption failed: {}", e),
+                        )
+                    })
             }
             Algorithm::XChaCha20Poly1305 => {
                 Self::check_key_len(key, 32)?;
                 if nonce.len() != 24 {
-                    return Err(Error::crypto("nonce_validation", &format!("XChaCha20Poly1305 requires 24-byte nonce, got {}", nonce.len())));
+                    return Err(Error::crypto(
+                        "nonce_validation",
+                        &format!(
+                            "XChaCha20Poly1305 requires 24-byte nonce, got {}",
+                            nonce.len()
+                        ),
+                    ));
                 }
                 let cipher = XChaCha20Poly1305::new(ChaChaKey::from_slice(key.expose_secret()));
                 let n: &XNonce = XNonce::from_slice(nonce);
                 cipher
-                    .encrypt(n, Payload { msg: plaintext, aad: associated_data })
-                    .map_err(|e| Error::crypto("encrypt", &format!("XChaCha20-Poly1305 encryption failed: {}", e)))
+                    .encrypt(
+                        n,
+                        Payload {
+                            msg: plaintext,
+                            aad: associated_data,
+                        },
+                    )
+                    .map_err(|e| {
+                        Error::crypto(
+                            "encrypt",
+                            &format!("XChaCha20-Poly1305 encryption failed: {}", e),
+                        )
+                    })
             }
             Algorithm::Aes256Gcm => {
                 Self::check_key_len(key, 32)?;
                 if nonce.len() != 12 {
-                    return Err(Error::crypto("nonce_validation", &format!("AES-256-GCM requires 12-byte nonce, got {}", nonce.len())));
+                    return Err(Error::crypto(
+                        "nonce_validation",
+                        &format!("AES-256-GCM requires 12-byte nonce, got {}", nonce.len()),
+                    ));
                 }
                 let cipher = Aes256Gcm::new(AesKey::from_slice(key.expose_secret()));
                 let n: &AesNonce = AesNonce::from_slice(nonce);
                 cipher
-                    .encrypt(n, Payload { msg: plaintext, aad: associated_data })
-                    .map_err(|e| Error::crypto("encrypt", &format!("AES-256-GCM encryption failed: {}", e)))
+                    .encrypt(
+                        n,
+                        Payload {
+                            msg: plaintext,
+                            aad: associated_data,
+                        },
+                    )
+                    .map_err(|e| {
+                        Error::crypto("encrypt", &format!("AES-256-GCM encryption failed: {}", e))
+                    })
             }
-            alg => Err(Error::crypto("encrypt", &format!("algorithm {alg:?} not supported for AEAD"))),
+            alg => Err(Error::crypto(
+                "encrypt",
+                &format!("algorithm {alg:?} not supported for AEAD"),
+            )),
         }
     }
 
@@ -183,37 +233,85 @@ impl crate::crypto::AEAD for RuntimeAead {
             Algorithm::ChaCha20Poly1305 => {
                 Self::check_key_len(key, 32)?;
                 if nonce.len() != 12 {
-                    return Err(Error::crypto("nonce_validation", &format!("ChaCha20Poly1305 requires 12-byte nonce, got {}", nonce.len())));
+                    return Err(Error::crypto(
+                        "nonce_validation",
+                        &format!(
+                            "ChaCha20Poly1305 requires 12-byte nonce, got {}",
+                            nonce.len()
+                        ),
+                    ));
                 }
                 let cipher = ChaCha20Poly1305::new(ChaChaKey::from_slice(key.expose_secret()));
                 let n: &ChaChaNonce = ChaChaNonce::from_slice(nonce);
                 cipher
-                    .decrypt(n, Payload { msg: ciphertext, aad: associated_data })
-                    .map_err(|e| Error::crypto("decrypt", &format!("ChaCha20-Poly1305 decryption failed: {}", e)))
+                    .decrypt(
+                        n,
+                        Payload {
+                            msg: ciphertext,
+                            aad: associated_data,
+                        },
+                    )
+                    .map_err(|e| {
+                        Error::crypto(
+                            "decrypt",
+                            &format!("ChaCha20-Poly1305 decryption failed: {}", e),
+                        )
+                    })
             }
             Algorithm::XChaCha20Poly1305 => {
                 Self::check_key_len(key, 32)?;
                 if nonce.len() != 24 {
-                    return Err(Error::crypto("nonce_validation", &format!("XChaCha20Poly1305 requires 24-byte nonce, got {}", nonce.len())));
+                    return Err(Error::crypto(
+                        "nonce_validation",
+                        &format!(
+                            "XChaCha20Poly1305 requires 24-byte nonce, got {}",
+                            nonce.len()
+                        ),
+                    ));
                 }
                 let cipher = XChaCha20Poly1305::new(ChaChaKey::from_slice(key.expose_secret()));
                 let n: &XNonce = XNonce::from_slice(nonce);
                 cipher
-                    .decrypt(n, Payload { msg: ciphertext, aad: associated_data })
-                    .map_err(|e| Error::crypto("decrypt", &format!("XChaCha20-Poly1305 decryption failed: {}", e)))
+                    .decrypt(
+                        n,
+                        Payload {
+                            msg: ciphertext,
+                            aad: associated_data,
+                        },
+                    )
+                    .map_err(|e| {
+                        Error::crypto(
+                            "decrypt",
+                            &format!("XChaCha20-Poly1305 decryption failed: {}", e),
+                        )
+                    })
             }
             Algorithm::Aes256Gcm => {
                 Self::check_key_len(key, 32)?;
                 if nonce.len() != 12 {
-                    return Err(Error::crypto("nonce_validation", &format!("AES-256-GCM requires 12-byte nonce, got {}", nonce.len())));
+                    return Err(Error::crypto(
+                        "nonce_validation",
+                        &format!("AES-256-GCM requires 12-byte nonce, got {}", nonce.len()),
+                    ));
                 }
                 let cipher = Aes256Gcm::new(AesKey::from_slice(key.expose_secret()));
                 let n: &AesNonce = AesNonce::from_slice(nonce);
                 cipher
-                    .decrypt(n, Payload { msg: ciphertext, aad: associated_data })
-                    .map_err(|e| Error::crypto("decrypt", &format!("AES-256-GCM decryption failed: {}", e)))
+                    .decrypt(
+                        n,
+                        Payload {
+                            msg: ciphertext,
+                            aad: associated_data,
+                        },
+                    )
+                    .map_err(|e| {
+                        Error::crypto("decrypt", &format!("AES-256-GCM decryption failed: {}", e))
+                    })
             }
-            alg => Err(Error::crypto("decrypt", &format!("algorithm {alg:?} not supported for AEAD"))),
+            alg => Err(Error::crypto(
+                "decrypt",
+                &format!("algorithm {alg:?} not supported for AEAD"),
+            )),
         }
     }
 }
@@ -224,7 +322,7 @@ pub enum NonceStrategy {
     /// Random nonces (requires large nonce space)
     Random,
     /// Counter-based (requires persistent state)
-    Counter, 
+    Counter,
     /// Derived from message (requires unique messages)
     Synthetic,
 }
@@ -232,9 +330,9 @@ pub enum NonceStrategy {
 /// Trait for nonce generation
 pub trait NonceGenerator {
     /// Generate a nonce for encryption
-    /// 
+    ///
     /// CRITICAL: Nonce must never be reused with the same key to avoid breaking security
-    fn generate_nonce(&mut self, message_id: &[u8]) -> Result<Vec<u8>>; 
+    fn generate_nonce(&mut self, message_id: &[u8]) -> Result<Vec<u8>>;
 
     /// Get the strategy this generator uses
     fn strategy(&self) -> NonceStrategy;
@@ -251,7 +349,7 @@ impl<R: SecureRandom> RandomNonceGenerator<R> {
     /// Create a new random nonce generator
     pub fn new(rng: R, nonce_size: usize) -> Self {
         Self { rng, nonce_size }
-    } 
+    }
 }
 
 impl<R: SecureRandom> NonceGenerator for RandomNonceGenerator<R> {
@@ -275,7 +373,9 @@ pub trait ConstantTime {
     fn ct_eq(&self, other: &[u8]) -> bool;
 
     /// Select between two values in constant time
-    fn ct_select(condition: bool, a: Self, b: Self) -> Self where Self: Sized;
+    fn ct_select(condition: bool, a: Self, b: Self) -> Self
+    where
+        Self: Sized;
 }
 
 #[cfg(test)]
@@ -309,7 +409,7 @@ mod tests {
         // ChaCha20Poly1305 needs 12-byte nonces
         let mut nonce_gen = RandomNonceGenerator::new(
             ChaCha12Rng::seed_from_u64(123),
-            12  // ChaCha20Poly1305 nonce size
+            12, // ChaCha20Poly1305 nonce size
         );
 
         // Let's test the data
@@ -317,14 +417,18 @@ mod tests {
         let associated_data = b"public metadata";
 
         // Encrypt
-        let nonce = nonce_gen.generate_nonce(b"msg_001").unwrap ();
-        let ciphertext = aead.encrypt(&key, &nonce, plaintext, associated_data).unwrap();
+        let nonce = nonce_gen.generate_nonce(b"msg_001").unwrap();
+        let ciphertext = aead
+            .encrypt(&key, &nonce, plaintext, associated_data)
+            .unwrap();
 
         // Verify that the ciphertext is different from the plaintext
         assert_ne!(ciphertext.as_slice(), plaintext);
 
         // Decrypt and finally verify
-        let decrypted = aead.decrypt(&key, &nonce, &ciphertext, associated_data).unwrap();
+        let decrypted = aead
+            .decrypt(&key, &nonce, &ciphertext, associated_data)
+            .unwrap();
         assert_eq!(decrypted.as_slice(), plaintext);
     }
 }

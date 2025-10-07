@@ -1,28 +1,27 @@
 //! rust-keyvault: A secure key management library for Rust
-//! 
-//! This crate provides foundational abstraction for cryptographic key management,, 
+//!
+//! This crate provides foundational abstraction for cryptographic key management,,
 //! focusing on security, correctness and composability.
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
-use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
-use zeroize::{Zeroize, ZeroizeOnDrop}; 
 use rand_chacha::ChaCha20Rng;
-use rand_core::{SeedableRng, RngCore};
+use rand_core::{RngCore, SeedableRng};
+use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::time::SystemTime;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
+pub mod audit;
+pub mod backup;
+pub mod crypto;
 pub mod error;
+pub mod export;
 pub mod key;
 pub mod storage;
-pub mod crypto;
-pub mod audit;
-pub mod export;
-pub mod backup;
 
 pub use error::{Error, Result};
-
 
 /// A unique identifier for a cryptographic key.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -34,7 +33,7 @@ impl KeyId {
         let mut rng = ChaCha20Rng::from_entropy();
         let mut bytes = [0u8; 16];
         rng.fill_bytes(&mut bytes);
-        
+
         Ok(Self(bytes))
     }
 
@@ -50,16 +49,16 @@ impl KeyId {
 
     /// Generate a versioned KeyId based on a base ID and version
     pub fn generate_versioned(base_id: &KeyId, version: u32) -> Result<Self> {
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(base_id.as_bytes());
         hasher.update(version.to_le_bytes());
         hasher.update(b"rust-keyvault-version");
-        
+
         let hash = hasher.finalize();
         let mut id_bytes = [0u8; 16];
         id_bytes.copy_from_slice(&hash[..16]);
-        
+
         Ok(Self(id_bytes))
     }
 
@@ -137,7 +136,7 @@ impl Algorithm {
     /// Get the key size in bytes for the algorithm
     pub const fn key_size(&self) -> usize {
         match self {
-            Self::ChaCha20Poly1305 
+            Self::ChaCha20Poly1305
             | Self::XChaCha20Poly1305  // ← Add
             | Self::Aes256Gcm => 32,
             Self::Ed25519 | Self::X25519 => 32,
@@ -147,7 +146,7 @@ impl Algorithm {
     /// Check if this algorithm is for symmetric encrytion
     pub const fn is_symmetric(&self) -> bool {
         matches!(self, Self::ChaCha20Poly1305 | Self::Aes256Gcm)
-    } 
+    }
 
     /// Get the nonce size for AEAD algorithms
     pub const fn nonce_size(&self) -> Option<usize> {

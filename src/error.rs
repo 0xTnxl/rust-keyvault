@@ -1,10 +1,10 @@
 //! Error types for rust-keyvault
 
-use thiserror::Error;
 use std::fmt;
+use thiserror::Error;
 
-/// Custom `Result` type 
-pub type Result<T> = std::result::Result<T, Error>; 
+/// Custom `Result` type
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// Error codes for programmatic handling
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,13 +71,13 @@ impl ErrorContext {
             details: None,
         }
     }
-    
+
     /// Add key ID to context
     pub fn with_key_id<S: Into<String>>(mut self, key_id: S) -> Self {
         self.key_id = Some(key_id.into());
         self
     }
-    
+
     /// Add details to context
     pub fn with_details<S: Into<String>>(mut self, details: S) -> Self {
         self.details = Some(details.into());
@@ -173,7 +173,7 @@ pub enum Error {
         #[source]
         source: std::io::Error,
     },
-    
+
     /// Authentication failed
     #[error("authentication failed: {reason}")]
     AuthenticationFailed {
@@ -182,7 +182,7 @@ pub enum Error {
         /// Number of failed attempts, if tracked
         attempts: Option<u32>,
     },
-    
+
     /// Configuration error
     #[error("configuration error: {message}")]
     ConfigurationError {
@@ -208,7 +208,7 @@ impl Error {
             Self::ConfigurationError { .. } => ErrorCode::ConfigurationError,
         }
     }
-    
+
     /// Create a crypto error with context
     pub fn crypto<S: Into<String>>(operation: S, message: S) -> Self {
         Self::CryptoError {
@@ -217,7 +217,7 @@ impl Error {
             key_id: None,
         }
     }
-    
+
     /// Create a crypto error with key context
     pub fn crypto_with_key<S: Into<String>>(operation: S, message: S, key_id: S) -> Self {
         Self::CryptoError {
@@ -235,7 +235,7 @@ impl Error {
             path: None,
         }
     }
-    
+
     /// Create a storage error with path context
     pub fn storage_with_path<S: Into<String>>(operation: S, message: S, path: S) -> Self {
         Self::StorageError {
@@ -244,15 +244,12 @@ impl Error {
             path: Some(path.into()),
         }
     }
-    
+
     /// Check if error is retryable
     pub fn is_retryable(&self) -> bool {
-        matches!(
-            self,
-            Self::StorageError { .. } | Self::IoError { .. }
-        )
+        matches!(self, Self::StorageError { .. } | Self::IoError { .. })
     }
-    
+
     /// Check if error is a authentication failure
     pub fn is_auth_failure(&self) -> bool {
         matches!(self, Self::AuthenticationFailed { .. })

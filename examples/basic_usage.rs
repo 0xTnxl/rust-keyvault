@@ -1,6 +1,8 @@
+// Primary example as at v0.1.0
+
 use rust_keyvault::key::{SecretKey, VersionedKey};
-use rust_keyvault::*;
 use rust_keyvault::storage::*;
+use rust_keyvault::*;
 use std::time::SystemTime;
 
 fn main() -> Result<()> {
@@ -34,7 +36,7 @@ fn main() -> Result<()> {
 
     // Retrieve the key and display it
     let retrieve = store.retrieve(&base_id)?;
-    println!("Retrieved key: {:?}", retrieve.metadata.algorithm); 
+    println!("Retrieved key: {:?}", retrieve.metadata.algorithm);
 
     // Rotate the key
     let rotated = store.rotate_key(&base_id)?;

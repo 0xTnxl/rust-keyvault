@@ -3,98 +3,98 @@
 **rust-keyvault v0.2.0**  
 **Last Audit:** October 7, 2025
 
-## 🔒 Security Audit Summary
+## Security Audit Summary
 
 This document provides a comprehensive security assessment of rust-keyvault, including cryptographic implementation details, threat model, known limitations, and security best practices.
 
-### Audit Status: ✅ PASSED
+### Audit Status: PASSED
 
-- **Memory Safety:** ✅ Zero unsafe code (`#![forbid(unsafe_code)]`)
-- **Cryptographic Algorithms:** ✅ Industry-standard primitives
-- **Key Derivation:** ✅ OWASP 2024 compliant (Argon2id)
-- **Timing Attacks:** ✅ Constant-time comparisons implemented
-- **Secret Zeroization:** ✅ Automatic memory clearing
-- **Dependency Audit:** ✅ All dependencies reviewed
-- **Test Coverage:** ✅ 40/40 tests passing
+- **Memory Safety:** Zero unsafe code (`#![forbid(unsafe_code)]`)
+- **Cryptographic Algorithms:** Industry-standard primitives
+- **Key Derivation:** OWASP 2024 compliant (Argon2id)
+- **Timing Attacks:** Constant-time comparisons implemented
+- **Secret Zeroization:** Automatic memory clearing
+- **Dependency Audit:** All dependencies reviewed
+- **Test Coverage:** 40/40 tests passing
 
 ---
 
-## 📊 Security Guarantees
+## Security Guarantees
 
 ### What rust-keyvault DOES Protect Against
 
-✅ **Memory Disclosure Attacks**
+**Memory Disclosure Attacks**
 - Automatic zeroization of secret key material on drop
 - No use of `unsafe` code - memory safety guaranteed by Rust
 - Stack and heap secrets cleared immediately after use
 
-✅ **Brute-Force Password Attacks**  
+**Brute-Force Password Attacks**  
 - Argon2id key derivation with high-security parameters
 - Default: 64 MiB memory, 4 iterations, 4-way parallelism
 - GPU-resistant parameters following OWASP 2024 recommendations
 
-✅ **Timing Attack Vectors**
+**Timing Attack Vectors**
 - Constant-time equality comparisons using `subtle` crate
 - No branch-based secret-dependent operations
 - AEAD constructions provide authenticated encryption
 
-✅ **Replay Attacks**
+**Replay Attacks**
 - Nonce-based encryption prevents message replay
 - XChaCha20-Poly1305 uses 192-bit nonces (collision-resistant)
 - HMAC-SHA256 integrity verification for backups
 
-✅ **Key Confusion Attacks**
+**Key Confusion Attacks**
 - Algorithm binding - keys tied to specific algorithms
 - Metadata includes algorithm identifier
 - Type-safe API prevents misuse
 
-✅ **Unauthorized Data Modification**
+**Unauthorized Data Modification**
 - AEAD authenticated encryption (ChaCha20-Poly1305, AES-256-GCM)
 - HMAC-SHA256 for backup integrity
 - Cryptographic authentication tags on all ciphertext
 
 ---
 
-## ⚠️ Security Limitations
+## Security Limitations
 
 ### What rust-keyvault DOES NOT Protect Against
 
-❌ **Side-Channel Attacks (Advanced)**
+ **Side-Channel Attacks (Advanced)**
 - **Cache-timing attacks:** AEAD implementations may leak via CPU caches
 - **Power analysis:** Not resistant to hardware-level power monitoring
 - **Electromagnetic emissions:** Not designed for TEMPEST protection
 - **Mitigation:** Use hardware security modules (HSMs) for high-security environments
 
-❌ **Operating System Compromises**
+ **Operating System Compromises**
 - **Root/admin access:** Attacker with root can read memory, files, swap
 - **Keyloggers:** Cannot prevent OS-level keystroke logging
 - **Kernel exploits:** OS vulnerabilities bypass all application-level security
 - **Mitigation:** Secure OS hardening, disk encryption, secure boot
 
-❌ **Physical Access Attacks**
+ **Physical Access Attacks**
 - **Cold boot attacks:** Memory remanence may persist after power-off
 - **DMA attacks:** Direct memory access via Thunderbolt/PCIe
 - **Hardware implants:** Physical tampering with devices
 - **Mitigation:** Full disk encryption, secure boot, tamper-evident hardware
 
-❌ **Quantum Computing (Future)**
+ **Quantum Computing (Future)**
 - **Shor's algorithm:** Would break RSA/ECC if implemented (not relevant yet)
 - **Grover's algorithm:** Effectively halves symmetric key strength
 - **Current status:** Symmetric algorithms (AES-256, ChaCha20) remain secure
 - **Mitigation:** Monitor NIST post-quantum cryptography standards
 
-❌ **Social Engineering**
+ **Social Engineering**
 - **Phishing:** Users may be tricked into revealing passwords
 - **Shoulder surfing:** Passwords entered in view of attackers
 - **Coercion:** Physical threats to reveal passwords
 - **Mitigation:** Security training, multi-factor authentication, duress codes
 
-❌ **Backup Security**
+ **Backup Security**
 - **Backup theft:** If attacker obtains backup file, they can attempt brute-force
 - **Weak passwords:** Short/common passwords remain vulnerable despite Argon2
 - **Mitigation:** Strong passwords (≥128 bits entropy), secure backup storage
 
-❌ **Swap/Page Files**
+ **Swap/Page Files**
 - **OS paging:** Secrets may be paged to disk despite zeroization
 - **Hibernation:** Memory dumps include all secrets
 - **Crash dumps:** Core dumps may contain key material
@@ -102,7 +102,7 @@ This document provides a comprehensive security assessment of rust-keyvault, inc
 
 ---
 
-## 🔐 Cryptographic Implementation Details
+## Cryptographic Implementation Details
 
 ### Algorithms & Parameters
 
@@ -147,7 +147,7 @@ This document provides a comprehensive security assessment of rust-keyvault, inc
 - Memory: 64 MiB (65,536 KiB)
 - Time cost: 4 iterations
 - Parallelism: 4 threads
-- **OWASP 2024 Compliance:** ✅ Meets "interactive" category
+- **OWASP 2024 Compliance:** Meets "interactive" category
 
 **Security Properties:**
 - Resistant to GPU/ASIC attacks (memory-hard)
@@ -180,7 +180,7 @@ This document provides a comprehensive security assessment of rust-keyvault, inc
 
 ---
 
-## 🎯 Threat Model
+## Threat Model
 
 ### Attacker Capabilities
 
@@ -277,55 +277,55 @@ This document provides a comprehensive security assessment of rust-keyvault, inc
 
 ---
 
-## 🛡️ Security Best Practices
+## Security Best Practices
 
 ### For Developers
 
 #### Secure Key Generation
 
 ```rust
-// ✅ GOOD: Use library's key generation
+// GOOD: Use library's key generation
 let key = SecretKey::generate(Algorithm::ChaCha20Poly1305)?;
 
-// ❌ BAD: Don't use weak entropy sources
+//  BAD: Don't use weak entropy sources
 // let key = SecretKey::from_bytes(vec![0u8; 32], algo)?; // All zeros!
 ```
 
 #### Secure Password Handling
 
 ```rust
-// ✅ GOOD: Use high-security config for sensitive vaults
+// GOOD: Use high-security config for sensitive vaults
 let config = StorageConfig::high_security();
 
 // ⚠️ CAUTION: Default config is balanced (19 MiB)
 let config = StorageConfig::default(); // Fine for most use cases
 
-// ❌ BAD: Never use fast_insecure() in production!
+//  BAD: Never use fast_insecure() in production!
 // let config = StorageConfig::fast_insecure(); // TESTING ONLY!
 ```
 
 #### Secure Key Comparison
 
 ```rust
-// ✅ GOOD: Use constant-time comparison
+// GOOD: Use constant-time comparison
 if key1.ct_eq(&key2) {
     // Keys match
 }
 
-// ❌ BAD: Never use == for secrets (timing attack!)
+//  BAD: Never use == for secrets (timing attack!)
 // if key1 == key2 { } // VULNERABLE TO TIMING ATTACKS!
 ```
 
 #### Secure Error Handling
 
 ```rust
-// ✅ GOOD: Don't leak secret information in errors
+// GOOD: Don't leak secret information in errors
 match vault.retrieve(&key_id) {
     Ok(key) => { /* use key */ },
     Err(e) => eprintln!("Key not found: {}", key_id), // Safe
 }
 
-// ❌ BAD: Don't log full key material
+//  BAD: Don't log full key material
 // eprintln!("Key bytes: {:?}", key.expose_secret()); // LEAKS SECRET!
 ```
 
@@ -390,7 +390,7 @@ vault.revoke_key(&old_version_id)?;
 
 ---
 
-## 📋 Security Checklist
+## Security Checklist
 
 ### Before Deployment
 
@@ -424,7 +424,7 @@ vault.revoke_key(&old_version_id)?;
 
 ---
 
-## 🚨 Reporting Security Vulnerabilities
+## Reporting Security Vulnerabilities
 
 **We take security seriously.** If you discover a security vulnerability:
 
@@ -454,7 +454,7 @@ vault.revoke_key(&old_version_id)?;
 
 ---
 
-## 📚 Security Resources
+## Security Resources
 
 ### Standards & Compliance
 
@@ -533,6 +533,6 @@ cargo miri test
 
 **Last Updated:** October 7, 2025  
 **Next Review:** April 2026 (6-month cycle)  
-**Audit Status:** ✅ PASSED
+**Audit Status:** PASSED
 
 *This document is maintained as part of the rust-keyvault security program.*
