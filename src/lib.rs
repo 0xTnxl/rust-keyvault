@@ -17,6 +17,9 @@ pub mod error;
 pub mod key;
 pub mod storage;
 pub mod crypto;
+pub mod audit;
+pub mod export;
+pub mod backup;
 
 pub use error::{Error, Result};
 
@@ -118,8 +121,10 @@ pub struct KeyMetadata {
 /// Supported cryptographic algorithms
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Algorithm {
-    /// ChaCha20-Poly1305 AEAD
+    /// ChaCha20-Poly1305 AEAD (12-byte nonce)
     ChaCha20Poly1305,
+    /// XChaCha20-Poly1305 AEAD (24-byte nonce - safer for random nonces)
+    XChaCha20Poly1305,
     /// AES-256-GCM AEAD
     Aes256Gcm,
     /// Ed25519 signature
@@ -132,7 +137,9 @@ impl Algorithm {
     /// Get the key size in bytes for the algorithm
     pub const fn key_size(&self) -> usize {
         match self {
-            Self::ChaCha20Poly1305 | Self::Aes256Gcm => 32,
+            Self::ChaCha20Poly1305 
+            | Self::XChaCha20Poly1305  // ← Add
+            | Self::Aes256Gcm => 32,
             Self::Ed25519 | Self::X25519 => 32,
         }
     }
@@ -141,6 +148,15 @@ impl Algorithm {
     pub const fn is_symmetric(&self) -> bool {
         matches!(self, Self::ChaCha20Poly1305 | Self::Aes256Gcm)
     } 
+
+    /// Get the nonce size for AEAD algorithms
+    pub const fn nonce_size(&self) -> Option<usize> {
+        match self {
+            Self::ChaCha20Poly1305 | Self::Aes256Gcm => Some(12),
+            Self::XChaCha20Poly1305 => Some(24), // ← Safe for random nonces!
+            _ => None,
+        }
+    }
 }
 
 impl Zeroize for Algorithm {
