@@ -23,7 +23,7 @@ A secure, production-grade cryptographic key management library for Rust.
 ## Security
 
 - **Zero Unsafe Code:** `#![forbid(unsafe_code)]` - completely memory safe
-- **Security Audit:** ✅ Passed (October 2025) - see [SECURITY.md](SECURITY.md)
+- **Security Audit:** Passed (October 2025) - see [SECURITY.md](SECURITY.md)
 - **OWASP Compliant:** Argon2id parameters meet OWASP 2024 guidelines
 - **Constant-Time Operations:** Timing-attack resistant comparisons
 - **Automatic Zeroization:** Secrets cleared from memory on drop
@@ -157,7 +157,7 @@ let restored_count = restored_store.restore(&backup, b"backup-password")?;
 println!("Restored {} keys", restored_count);
 ```
 
-## ⚡ Performance
+## Performance
 
 Benchmarks run on AMD Ryzen 9 5950X (3.4 GHz base):
 

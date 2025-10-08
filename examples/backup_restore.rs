@@ -14,7 +14,7 @@ use rust_keyvault::{
 use std::time::SystemTime;
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    println!("🗄️  Vault Backup & Restore Example\n");
+    println!("  Vault Backup & Restore Example\n");
 
     // ========================================
     // Step 1: Create vault with multiple keys
@@ -42,7 +42,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         metadata: metadata1,
     })?;
     println!(
-        "   ✓ Added key 1: ChaCha20Poly1305 (ID: {})",
+        "   Added key 1: ChaCha20Poly1305 (ID: {})",
         hex::encode(key_id1.as_bytes())
     );
 
@@ -63,7 +63,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         metadata: metadata2,
     })?;
     println!(
-        "   ✓ Added key 2: XChaCha20Poly1305 (ID: {})",
+        "   Added key 2: XChaCha20Poly1305 (ID: {})",
         hex::encode(key_id2.as_bytes())
     );
 
@@ -84,7 +84,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         metadata: metadata3,
     })?;
     println!(
-        "   ✓ Added key 3: AES-256-GCM (ID: {})",
+        "   Added key 3: AES-256-GCM (ID: {})",
         hex::encode(key_id3.as_bytes())
     );
 
@@ -103,7 +103,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let backup = vault.backup(backup_password, backup_config)?;
 
-    println!("   ✓ Backup created successfully");
+    println!("   Backup created successfully");
     println!("   - Format version: {}", backup.format_version);
     println!("   - Keys backed up: {}", backup.metadata.key_count);
     println!("   - Compressed: {}", backup.metadata.compressed);
@@ -122,7 +122,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("\n3. Serializing backup to JSON...");
 
     let backup_json = backup.to_json()?;
-    println!("   ✓ Backup serialized to {} bytes", backup_json.len());
+    println!("   Backup serialized to {} bytes", backup_json.len());
 
     // In production, you would save this to a file:
     // std::fs::write("vault_backup_2025_10_07.json", &backup_json)?;
@@ -138,7 +138,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let temp_dir2 = tempfile::tempdir()?;
     let config2 = StorageConfig::default();
     let mut new_vault = FileStore::new(temp_dir2.path(), config2)?;
-    println!("   ✓ New vault created");
+    println!("   New vault created");
 
     // ========================================
     // Step 5: Restore from backup
@@ -146,7 +146,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("\n5. Restoring from backup...");
 
     let restored_count = new_vault.restore(&backup, backup_password)?;
-    println!("   ✓ Restored {} keys successfully", restored_count);
+    println!("   Restored {} keys successfully", restored_count);
 
     // ========================================
     // Step 6: Verify restored data
@@ -159,7 +159,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         restored_key1.metadata.algorithm,
         Algorithm::ChaCha20Poly1305
     );
-    println!("   ✓ Key 1 verified: ChaCha20Poly1305");
+    println!("   Key 1 verified: ChaCha20Poly1305");
 
     // Verify key 2
     let restored_key2 = new_vault.retrieve(&key_id2)?;
@@ -167,12 +167,12 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         restored_key2.metadata.algorithm,
         Algorithm::XChaCha20Poly1305
     );
-    println!("   ✓ Key 2 verified: XChaCha20Poly1305");
+    println!("   Key 2 verified: XChaCha20Poly1305");
 
     // Verify key 3
     let restored_key3 = new_vault.retrieve(&key_id3)?;
     assert_eq!(restored_key3.metadata.algorithm, Algorithm::Aes256Gcm);
-    println!("   ✓ Key 3 verified: AES-256-GCM");
+    println!("   Key 3 verified: AES-256-GCM");
 
     // ========================================
     // Step 7: Test wrong password failure
@@ -186,7 +186,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     match test_vault.restore(&backup, wrong_password) {
         Err(e) => {
-            println!("   ✓ Wrong password correctly rejected: {}", e);
+            println!("   Wrong password correctly rejected: {}", e);
         }
         Ok(_) => {
             panic!("Should have failed with wrong password!");
@@ -196,7 +196,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // ========================================
     // Summary
     // ========================================
-    println!("\n✅ Backup & Restore Complete!");
+    println!("\n Backup & Restore Complete!");
     println!("\nKey Features Demonstrated:");
     println!("  • Full vault backup with all keys");
     println!("  • Password-protected encryption (Argon2id + XChaCha20Poly1305)");

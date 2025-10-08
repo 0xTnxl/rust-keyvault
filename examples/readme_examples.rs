@@ -9,7 +9,7 @@ use rust_keyvault::*;
 use std::time::SystemTime;
 
 fn main() -> Result<()> {
-    println!("🔍 Verifying README examples...\n");
+    println!("Verifying README examples...\n");
 
     // Create temporary directory for testing
     let temp_dir = tempfile::tempdir()?;
@@ -50,7 +50,7 @@ fn main() -> Result<()> {
 
         // Retrieve and use
         let retrieved = store.retrieve(&base_id)?;
-        println!("   ✓ Key algorithm: {:?}", retrieved.key.algorithm());
+        println!("   Key algorithm: {:?}", retrieved.key.algorithm());
     }
 
     // ========================================
@@ -80,15 +80,15 @@ fn main() -> Result<()> {
 
         // Rotate to a new version
         let rotated_key = store.rotate_key(&base_id)?;
-        println!("   ✓ New version: {}", rotated_key.metadata.version);
+        println!("   New version: {}", rotated_key.metadata.version);
 
         // Get all versions
         let versions = store.get_key_versions(&base_id)?;
-        println!("   ✓ Total versions: {}", versions.len());
+        println!("   Total versions: {}", versions.len());
 
         // Get latest active key
         let latest = store.get_latest_key(&base_id)?;
-        println!("   ✓ Latest version: {}", latest.metadata.version);
+        println!("   Latest version: {}", latest.metadata.version);
     }
 
     // ========================================
@@ -123,7 +123,7 @@ fn main() -> Result<()> {
         let json_export = exported.to_json()?;
         let export_file = temp_dir.path().join("exported_key.json");
         std::fs::write(&export_file, &json_export)?;
-        println!("   ✓ Exported to JSON: {} bytes", json_export.len());
+        println!("   Exported to JSON: {} bytes", json_export.len());
 
         // Import into another vault
         let mut target_store =
@@ -174,26 +174,26 @@ fn main() -> Result<()> {
         };
 
         // Create encrypted backup (this will take ~10s due to Argon2)
-        println!("   ⏳ Creating backup (takes ~10s due to Argon2)...");
+        println!("   Creating backup (takes ~10s due to Argon2)...");
         let backup = store.backup(b"backup-password", backup_config)?;
 
         // Serialize to JSON and save
         let backup_json = backup.to_json()?;
         let backup_file = temp_dir.path().join("vault.backup.json");
         std::fs::write(&backup_file, &backup_json)?;
-        println!("   ✓ Backup created: {} bytes", backup_json.len());
+        println!("   Backup created: {} bytes", backup_json.len());
 
         // Restore from backup (this will also take ~10s due to Argon2)
-        println!("   ⏳ Restoring backup (takes ~10s due to Argon2)...");
+        println!("   Restoring backup (takes ~10s due to Argon2)...");
         let backup_str = std::fs::read_to_string(&backup_file)?;
         let backup = VaultBackup::from_json(&backup_str)?;
 
         let mut restored_store =
             FileStore::new(temp_dir.path().join("restored"), StorageConfig::default())?;
         let restored_count = restored_store.restore(&backup, b"backup-password")?;
-        println!("   ✓ Restored {} keys", restored_count);
+        println!("   Restored {} keys", restored_count);
     }
 
-    println!("\n✅ All README examples verified successfully!");
+    println!("\nAll README examples verified successfully!");
     Ok(())
 }

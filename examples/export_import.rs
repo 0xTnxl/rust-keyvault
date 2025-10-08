@@ -14,7 +14,7 @@ use rust_keyvault::{
 use std::time::{Duration, SystemTime};
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    println!("🔐 Key Export/Import Example\n");
+    println!("Key Export/Import Example\n");
 
     // ========================================
     // Step 1: Create source vault and key
@@ -44,7 +44,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     source_vault.store(versioned_key)?;
     println!(
-        "   ✓ Key stored with ID: {}",
+        "    Key stored with ID: {}",
         hex::encode(key_id.as_bytes())
     );
 
@@ -56,7 +56,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let export_password = b"super-secret-export-password-123!";
     let exported_key = source_vault.export_key(&key_id, export_password)?;
 
-    println!("   ✓ Key exported successfully");
+    println!("    Key exported successfully");
     println!(
         "   - Export format version: {}",
         exported_key.format_version
@@ -78,7 +78,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("\n3. Serializing to JSON for transmission/storage...");
 
     let json_export = exported_key.to_json()?;
-    println!("   ✓ Serialized to {} bytes", json_export.len());
+    println!("   Serialized to {} bytes", json_export.len());
     println!(
         "   First 100 chars: {}...",
         &json_export[..100.min(json_export.len())]
@@ -93,7 +93,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("\n4. Deserializing from JSON...");
 
     let deserialized = ExportedKey::from_json(&json_export)?;
-    println!("   ✓ Deserialized successfully");
+    println!("   Deserialized successfully");
     println!("   - Algorithm: {:?}", deserialized.metadata.algorithm);
     println!("   - Created at: {:?}", deserialized.metadata.created_at);
     println!("   - Expires at: {:?}", deserialized.metadata.expires_at);
@@ -109,7 +109,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let imported_id = dest_vault.import_key(&deserialized, export_password)?;
     println!(
-        "   ✓ Key imported with ID: {}",
+        "    Key imported with ID: {}",
         hex::encode(imported_id.as_bytes())
     );
     assert_eq!(imported_id, key_id, "Key IDs should match");
@@ -133,8 +133,8 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         "Algorithm should match"
     );
 
-    println!("   ✓ Key material verified - identical to original");
-    println!("   ✓ Metadata preserved correctly");
+    println!("    Key material verified - identical to original");
+    println!("    Metadata preserved correctly");
 
     // ========================================
     // Step 7: Test wrong password failure
@@ -144,7 +144,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let wrong_password = b"wrong-password";
     match dest_vault.import_key(&deserialized, wrong_password) {
         Err(e) => {
-            println!("   ✓ Wrong password correctly rejected: {}", e);
+            println!("    Wrong password correctly rejected: {}", e);
         }
         Ok(_) => {
             panic!("Should have failed with wrong password!");
@@ -154,7 +154,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // ========================================
     // Summary
     // ========================================
-    println!("\n✅ Export/Import workflow complete!");
+    println!("\nExport/Import workflow complete!");
     println!("\nKey Features Demonstrated:");
     println!("  • Password-protected key export using Argon2id");
     println!("  • High-security parameters (64 MiB memory, t=4, p=4)");
