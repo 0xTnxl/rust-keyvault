@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2025-10-08
+
+### Fixed
+- **Documentation** - Corrected README examples to use actual API
+  - Fixed Import/Export example to use `store.export_key()` and `store.import_key()` instead of non-existent helper functions
+  - Fixed Backup/Restore example to use `store.backup()` and `store.restore()` instead of non-existent helper functions
+  - Corrected file reading to use `std::fs::read_to_string()` for JSON deserialization (requires `&str`, not `Vec<u8>`)
+  - Added explicit imports for `SecretKey` and `VersionedKey` in Basic Usage example
+  - Added `examples/readme_examples.rs` - comprehensive verification suite for all README code snippets
+
+### Changed
+- **Documentation** - Improved import specificity in README examples (use explicit imports instead of glob imports)
+
 ## [0.2.0] - 2025-10-08
 
 ### Added
