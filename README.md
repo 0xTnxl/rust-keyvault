@@ -23,7 +23,7 @@ A secure, production-grade cryptographic key management library for Rust.
 ## Security
 
 - **Zero Unsafe Code:** `#![forbid(unsafe_code)]` - completely memory safe
-- **Security Audit:** ✅ Passed (October 2025) - see [SECURITY.md](SECURITY.md)
+- **Security Audit:** Passed (October 2025) - see [SECURITY.md](SECURITY.md)
 - **OWASP Compliant:** Argon2id parameters meet OWASP 2024 guidelines
 - **Constant-Time Operations:** Timing-attack resistant comparisons
 - **Automatic Zeroization:** Secrets cleared from memory on drop
@@ -55,6 +55,7 @@ rust-keyvault = "0.2.0"
 
 ```rust
 use rust_keyvault::*;
+use rust_keyvault::key::{SecretKey, VersionedKey};
 use rust_keyvault::storage::*;
 use std::time::SystemTime;
 
@@ -105,40 +106,58 @@ let latest = store.get_latest_key(&base_id)?;
 ### Import/Export (v0.2.0)
 
 ```rust
-use rust_keyvault::export::*;
+use rust_keyvault::export::ExportedKey;
+use rust_keyvault::storage::FileStore;
 
-// Export key to encrypted package
-let export_key = SecretKey::generate(Algorithm::ChaCha20Poly1305)?;
-let package = export_key_with_password(
-    &retrieved,
-    b"export-password",
-    ExportFormat::Encrypted,
-)?;
+// Export key with password protection
+let exported = store.export_key(&base_id, b"export-password")?;
+
+// Serialize to JSON for transmission/storage
+let json_export = exported.to_json()?;
+std::fs::write("exported_key.json", &json_export)?;
 
 // Import into another vault
 let mut target_store = FileStore::new("./target", config)?;
-target_store.init_with_password(b"target-password")?;
 
-let imported = import_key_from_bytes(&package, b"export-password")?;
-target_store.store(imported)?;
+// Deserialize from JSON
+let json_str = std::fs::read_to_string("exported_key.json")?;
+let exported_key = ExportedKey::from_json(&json_str)?;
+
+// Import the key
+let imported_id = target_store.import_key(&exported_key, b"export-password")?;
+println!("Imported key with ID: {}", imported_id);
 ```
 
 ### Backup/Restore (v0.2.0)
 
 ```rust
-use rust_keyvault::backup::*;
+use rust_keyvault::backup::{BackupConfig, VaultBackup};
+
+// Configure backup options
+let backup_config = BackupConfig {
+    include_audit_logs: true,
+    compress: true,
+    encryption_password: b"backup-password".to_vec(),
+    comment: Some("Production backup".to_string()),
+};
 
 // Create encrypted backup
-let backup = create_backup(&store, b"backup-password")?;
-std::fs::write("vault.backup", backup)?;
+let backup = store.backup(b"backup-password", backup_config)?;
+
+// Serialize to JSON and save
+let backup_json = backup.to_json()?;
+std::fs::write("vault.backup.json", &backup_json)?;
 
 // Restore from backup
-let backup_data = std::fs::read("vault.backup")?;
+let backup_str = std::fs::read_to_string("vault.backup.json")?;
+let backup = VaultBackup::from_json(&backup_str)?;
+
 let mut restored_store = FileStore::new("./restored", config)?;
-restore_backup(&backup_data, &mut restored_store, b"backup-password")?;
+let restored_count = restored_store.restore(&backup, b"backup-password")?;
+println!("Restored {} keys", restored_count);
 ```
 
-## ⚡ Performance
+## Performance
 
 Benchmarks run on AMD Ryzen 9 5950X (3.4 GHz base):
 
