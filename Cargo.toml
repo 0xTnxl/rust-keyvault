@@ -1,6 +1,6 @@
 [package]
 name = "rust-keyvault"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Blessed Tosin-Oyinbo <tosinoyinboblessed@gmail.com>"] 
 license = "MIT OR Apache-2.0"
@@ -21,6 +21,11 @@ argon2 = "0.5"
 sha2 = "0.10"
 subtle = "2.5"
 zeroize = { version = "1.7", features = ["derive"] }
+hkdf = "0.12"
+hmac = "0.12"
+
+# Compression
+flate2 = "1.0"
 
 # Random generation
 rand_core = "0.6"
@@ -38,6 +43,26 @@ hex = "0.4"
 [dev-dependencies]
 hex = "0.4"
 tempfile = "3.0"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[lib]
+bench = false
+
+[[bench]]
+name = "key_operations"
+harness = false
+
+[[bench]]
+name = "storage_operations"
+harness = false
+
+[[bench]]
+name = "export_import"
+harness = false
+
+[[bench]]
+name = "backup_restore"
+harness = false
 
 [features]
 default = []
